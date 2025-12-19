@@ -167,18 +167,19 @@ const normalizeCartItem = (item: any, fallback?: Partial<CartItem>): CartItem =>
     v === undefined || v === null || v === '' ? def : String(v);
 
   const fallbackId = fallback?.id || `temp-${Date.now()}`;
-  const price =
-    Number(
-      item?.price ??
-        item?.amount ??
-        item?.selectedDenomination?.price ??
-        item?.selectedDenomination?.amount ??
-        item?.denominationPrice ??
-        item?.value ??
-        item?.cost ??
-        item?.denomination
-    ) ||
-    Number(fallback?.price ?? 0);
+  const parsedPrice = Number(
+    item?.price ??
+      item?.amount ??
+      item?.selectedDenomination?.price ??
+      item?.selectedDenomination?.amount ??
+      item?.denominationPrice ??
+      item?.value ??
+      item?.cost ??
+      item?.denomination
+  );
+  const price = Number.isFinite(parsedPrice)
+    ? parsedPrice
+    : Number(fallback?.price ?? 0);
 
   const selectedRegion =
     item?.selectedRegion ||
