@@ -31,7 +31,11 @@ export interface ApiConfig {
 export interface CustomInputConfig {
   enabled: boolean;
   label: string;
-  price: number;
+  /**
+   * Price for the custom input option.
+   * Optional because regions may disable custom input or older configs might not include it.
+   */
+  price?: number;
   // Optional legacy fields (incoming data may use these names)
   amount?: number;
   value?: number;
