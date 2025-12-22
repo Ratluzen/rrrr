@@ -14,11 +14,10 @@ import InvoiceModal from './components/InvoiceModal'; // Import InvoiceModal
 import LoginModal from './components/LoginModal'; // Import LoginModal
 import { ShoppingBag, ShoppingCart, Trash2, ArrowLeft, CheckCircle, Clock, X, CheckSquare, AlertTriangle, Receipt, Copy, ChevronDown, ChevronUp, ShieldAlert, Lock, Flag, Tags, User, CreditCard, Facebook, Instagram, Gamepad2, Smartphone, Gift, Globe, Tag, Box, Monitor, MessageCircle, Heart, Star, Coins } from 'lucide-react';
 import { INITIAL_CURRENCIES, PRODUCTS as INITIAL_PRODUCTS, CATEGORIES as INITIAL_CATEGORIES, INITIAL_TERMS, INITIAL_BANNERS, MOCK_USERS, MOCK_ORDERS, MOCK_INVENTORY, TRANSACTIONS as INITIAL_TRANSACTIONS } from './constants';
-import api, { productService, orderService, contentService, userService, walletService, inventoryService, authService, cartService, paymentService } from './services/api';
+import api, { productService, orderService, contentService, userService, walletService, inventoryService, authService, cartService, paymentService, pushService } from './services/api';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
-import { Clipboard } from '@capacitor/clipboard';
 
 // ============================================================
 // ✅ Simple localStorage cache helpers (offline-first boot)
@@ -226,40 +225,6 @@ const App: React.FC = () => {
 
   // --- Firebase FCM Token (for Push Notifications) ---
   const [fcmToken, setFcmToken] = useState<string>(() => localStorage.getItem('fcm_token') || '');
-  const [showFcmTokenModal, setShowFcmTokenModal] = useState(false);
-  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
-
-  const copyFcmToken = async () => {
-    if (!fcmToken) {
-      setCopyStatus('failed');
-      return;
-    }
-    try {
-      // Prefer modern clipboard API when available
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(fcmToken);
-      } else {
-        // Fallback for some WebView environments
-        const textarea = document.createElement('textarea');
-        textarea.value = fcmToken;
-        textarea.setAttribute('readonly', '');
-        textarea.style.position = 'fixed';
-        textarea.style.top = '-9999px';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.focus();
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-      }
-      setCopyStatus('copied');
-      setTimeout(() => setCopyStatus('idle'), 1200);
-    } catch (e) {
-      console.error('Failed to copy FCM token', e);
-      setCopyStatus('failed');
-      setTimeout(() => setCopyStatus('idle'), 1500);
-    }
-  };
 
   // --- PayTabs Return Handling ---
   const [paytabsProcessing, setPaytabsProcessing] = useState<boolean>(false);
@@ -268,8 +233,7 @@ const App: React.FC = () => {
 
 // ============================================================
 // ✅ Firebase Push Notifications (FCM) - Android only
-// - Saves token into localStorage (fcm_token)
-// - Shows token once via alert (so you can copy it without PC)
+// - Saves token into localStorage (fcm_token) and registers device silently
 // ============================================================
 useEffect(() => {
   const initPushNotifications = async () => {
@@ -281,24 +245,22 @@ useEffect(() => {
 
       await PushNotifications.register();
 
-      PushNotifications.addListener('registration', (token) => {
+      PushNotifications.addListener('registration', async (token) => {
         try {
           const value = String(token?.value || '');
           if (!value) return;
 
-          const prev = localStorage.getItem('fcm_token') || '';
           localStorage.setItem('fcm_token', value);
           setFcmToken(value);
 
-          // Show once when token changes (helps when you only use GitHub on phone)
-          if (value !== prev) {
-            // Best-effort copy
-            if (navigator?.clipboard?.writeText) {
-              navigator.clipboard.writeText(value).catch(() => {});
-            }
-            setFcmToken(value);
-            setCopyStatus('idle');
-            setShowFcmTokenModal(true);
+          try {
+            await pushService.registerDevice({
+              token: value,
+              platform: 'android',
+              userId: currentUser?.id,
+            });
+          } catch (regErr) {
+            console.warn('Failed to register device token', regErr);
           }
         } catch {}
       });
@@ -320,7 +282,25 @@ useEffect(() => {
   };
 
   void initPushNotifications();
-}, []);
+}, [currentUser?.id]);
+
+// Register device when token already available (e.g., after login)
+useEffect(() => {
+  const syncToken = async () => {
+    if (!fcmToken) return;
+    if (Capacitor.getPlatform() !== 'android') return;
+    try {
+      await pushService.registerDevice({
+        token: fcmToken,
+        platform: 'android',
+        userId: currentUser?.id,
+      });
+    } catch (err) {
+      console.warn('Failed to sync device token', err);
+    }
+  };
+  void syncToken();
+}, [fcmToken, currentUser?.id]);
   
   // --- Global App State (Lifted for Admin Control) ---
   const [products, setProducts] = useState<Product[]>(() => loadCache<Product[]>('cache_products_v1', INITIAL_PRODUCTS));
@@ -1226,6 +1206,11 @@ useEffect(() => {
             // Optimistic update first (ensure valid date to prevent crash)
             const newOrder = normalizeOrderFromApi(result.order);
             setOrders(prev => [newOrder, ...prev]);
+            try {
+              await pushService.notifyAdminOrder({ orderId: newOrder.id });
+            } catch (notifyErr) {
+              console.warn('Failed to notify admin about new order', notifyErr);
+            }
         }
 
         await syncAfterOrder();
@@ -1393,6 +1378,13 @@ useEffect(() => {
                   alert(result.message);
                   return;
               }
+              if (result.order) {
+                try {
+                  await pushService.notifyAdminOrder({ orderId: String(result.order.id || '') });
+                } catch (notifyErr) {
+                  console.warn('Failed to notify admin about bulk order item', notifyErr);
+                }
+              }
           }
 
           await syncAfterOrder();
@@ -1428,6 +1420,13 @@ useEffect(() => {
           if (!result.ok) {
               alert(result.message);
               return;
+          }
+          if (result.order) {
+            try {
+              await pushService.notifyAdminOrder({ orderId: String(result.order.id || '') });
+            } catch (notifyErr) {
+              console.warn('Failed to notify admin about cart order', notifyErr);
+            }
           }
 
           await syncAfterOrder();
@@ -1998,63 +1997,7 @@ useEffect(() => {
         />
 
         
-        {/* FCM Token Modal */}
-        {showFcmTokenModal && (
-          <div
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4"
-            onClick={() => setShowFcmTokenModal(false)}
-          >
-            <div
-              className="w-full max-w-md rounded-2xl bg-white p-5 text-black shadow-xl"
-              onClick={(e) => e.stopPropagation()}
-              dir="rtl"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-base font-bold">✅ تم تفعيل الإشعارات</div>
-                <button
-                  className="text-sm text-gray-600"
-                  onClick={() => setShowFcmTokenModal(false)}
-                  type="button"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="mt-3 text-sm text-gray-700">
-                FCM Token:
-              </div>
-
-              <div className="mt-2 rounded-lg bg-gray-100 p-3 text-xs leading-relaxed break-all select-text">
-                {fcmToken}
-              </div>
-
-              <div className="mt-4 flex items-center justify-between gap-3">
-                <div className="text-xs text-gray-600">
-                  {copyStatus === 'copied' ? '✅ تم النسخ' : copyStatus === 'failed' ? '⚠️ تعذر النسخ' : ''}
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    className="rounded-lg bg-[#13141f] px-4 py-2 text-sm font-semibold text-white"
-                    onClick={copyFcmToken}
-                  >
-                    نسخ
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-800"
-                    onClick={() => setShowFcmTokenModal(false)}
-                  >
-                    OK
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-<div className="hidden sm:block absolute top-0 left-1/2 transform -translate-x-1/2 w-40 h-7 bg-[#2d2d2d] rounded-b-2xl z-[60]"></div>
+        <div className="hidden sm:block absolute top-0 left-1/2 transform -translate-x-1/2 w-40 h-7 bg-[#2d2d2d] rounded-b-2xl z-[60]"></div>
       </div>
     </div>
   );
