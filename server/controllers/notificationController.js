@@ -2,53 +2,6 @@ const asyncHandler = require('express-async-handler');
 const prisma = require('../config/db');
 const { upsertToken, getTokensForUsers } = require('../utils/tokenStore');
 
-// FCM HTTP legacy endpoint
-const FCM_ENDPOINT = 'https://fcm.googleapis.com/fcm/send';
-const FCM_SERVER_KEY = process.env.FCM_SERVER_KEY || process.env.FIREBASE_SERVER_KEY;
-
-const chunk = (arr, size) => {
-  const res = [];
-  for (let i = 0; i < arr.length; i += size) res.push(arr.slice(i, i + size));
-  return res;
-};
-
-const sendFcmPush = async (tokens, { title, body, data }) => {
-  if (!tokens.length) return { sent: 0, attempts: 0, errors: [], reason: 'no-tokens' };
-  if (!FCM_SERVER_KEY) return { sent: 0, attempts: 0, errors: ['missing FCM_SERVER_KEY'], reason: 'missing-key' };
-
-  const errors = [];
-  let sent = 0;
-  let attempts = 0;
-
-  for (const batch of chunk(tokens, 500)) {
-    attempts += batch.length;
-    const res = await fetch(FCM_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `key=${FCM_SERVER_KEY}`,
-      },
-      body: JSON.stringify({
-        registration_ids: batch,
-        notification: { title, body },
-        data: data || {},
-        android: { priority: 'high' },
-        priority: 'high',
-      }),
-    });
-
-    if (!res.ok) {
-      errors.push(`FCM ${res.status}: ${await res.text()}`);
-      continue;
-    }
-
-    const json = await res.json();
-    sent += json.success || 0;
-  }
-
-  return { sent, attempts, errors };
-};
-
 // @desc    Get user notifications
 // @route   GET /api/notifications
 // @access  Private
@@ -138,19 +91,10 @@ const notifyAdminOrder = asyncHandler(async (req, res) => {
   );
 
   const tokens = await getTokensForUsers(adminIds);
-  const push = await sendFcmPush(
-    tokens.map((t) => t.token),
-    {
-      title: title || 'طلب جديد',
-      body: message || (orderId ? `تم إنشاء طلب جديد رقم ${orderId}` : 'تم إنشاء طلب جديد'),
-      data: { orderId, type: 'admin-order' },
-    }
-  );
   res.json({
     success: true,
     notified: adminIds.length,
     tokens: tokens.map((t) => t.token),
-    push,
   });
 });
 
@@ -182,18 +126,9 @@ const notifyUserOrder = asyncHandler(async (req, res) => {
   );
 
   const tokens = await getTokensForUsers([targetUserId]);
-  const push = await sendFcmPush(
-    tokens.map((t) => t.token),
-    {
-      title: title || 'تحديث الطلب',
-      body: message || (status ? `تم تحديث حالة الطلب إلى ${status}` : 'تم تحديث حالة الطلب'),
-      data: { orderId, status, type: 'user-order' },
-    }
-  );
   res.json({
     success: true,
     tokens: tokens.map((t) => t.token),
-    push,
   });
 });
 
