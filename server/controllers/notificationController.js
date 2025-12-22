@@ -214,6 +214,7 @@ const notifyAdminOrder = asyncHandler(async (req, res) => {
     success: true,
     notified: adminIds.length,
     tokens: tokens.map((t) => t.token),
+    push,
   });
 });
 

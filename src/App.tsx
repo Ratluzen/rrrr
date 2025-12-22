@@ -250,41 +250,6 @@ useEffect(() => {
       if (perm.receive !== 'granted') return;
 
       await PushNotifications.register();
-      try {
-        await PushNotifications.createChannel({
-          id: 'default',
-          name: 'إشعارات عامة',
-          description: 'الإشعارات العامة للتطبيق',
-          importance: 5,
-        });
-      } catch (channelErr) {
-        console.warn('Failed to create notification channel', channelErr);
-      }
-
-      const showLocalNotification = async (notification: any) => {
-        const title = notification?.notification?.title || notification?.data?.title || 'إشعار جديد';
-        const body = notification?.notification?.body || notification?.data?.body || notification?.data?.message;
-
-        try {
-          if (typeof Notification !== 'undefined') {
-            if (Notification.permission === 'default') {
-              await Notification.requestPermission();
-            }
-            if (Notification.permission === 'granted') {
-              new Notification(title, { body });
-              return;
-            }
-          }
-        } catch (webNotifErr) {
-          console.warn('Web notification fallback failed', webNotifErr);
-        }
-
-        // As a final fallback, show a simple alert (foreground only)
-        if (title || body) {
-          alert(`${title}${body ? `\n${body}` : ''}`);
-        }
-      };
-
       PushNotifications.addListener('registration', async (token) => {
         try {
           const value = String(token?.value || '');
