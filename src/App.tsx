@@ -222,6 +222,9 @@ const App: React.FC = () => {
   });
   const [isSecurityBlocked, setIsSecurityBlocked] = useState(false);
   const [securityMessage, setSecurityMessage] = useState('');
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() =>
+    hasToken ? loadCache<UserProfile | null>('cache_user_v1', null) : null
+  ); // Start as null (Guest)
 
   // --- Firebase FCM Token (for Push Notifications) ---
   const [fcmToken, setFcmToken] = useState<string>(() => localStorage.getItem('fcm_token') || '');
@@ -337,7 +340,6 @@ useEffect(() => {
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
 
   // --- Auth State ---
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => (hasToken ? loadCache<UserProfile | null>('cache_user_v1', null) : null)); // Start as null (Guest)
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   // --- Admin Auth State ---
