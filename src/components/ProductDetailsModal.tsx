@@ -7,7 +7,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   formatPrice: (price: number) => string;
-  addToCart: (item: CartItem) => void;
+  addToCart: (item: CartItem) => Promise<boolean>;
   userBalance?: number; 
   onPurchase?: (
     itemName: string,
@@ -123,7 +123,7 @@ const ProductDetailsModal: React.FC<Props> = ({ product, isOpen, onClose, format
     ? currentPriceRaw
     : Number(product.price);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     // Availability Check
     if (!isAvailableGlobally) {
         alert("المنتج غير متوفر حالياً");
@@ -163,9 +163,10 @@ const ProductDetailsModal: React.FC<Props> = ({ product, isOpen, onClose, format
         customInputLabel: activeCustomInput?.label
     };
 
-    addToCart(newItem);
-    onClose();
-    alert("تمت الإضافة إلى السلة بنجاح ✅");
+    const added = await addToCart(newItem);
+    if (added) {
+      onClose();
+    }
   };
 
   const handleBuyNowClick = () => {

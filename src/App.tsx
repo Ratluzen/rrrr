@@ -215,8 +215,50 @@ const normalizeTransactionsFromApi = (data: any): Transaction[] =>
 
 
 const App: React.FC = () => {
+  const hasToken = Boolean(localStorage.getItem('token'));
+  const [currentView, setCurrentView] = useState<View>(View.HOME);
+  const [currencyCode, setCurrencyCode] = useState<string>(() => {
+    return localStorage.getItem('currencyCode') || 'USD';
+  });
+  const [isSecurityBlocked, setIsSecurityBlocked] = useState(false);
+  const [securityMessage, setSecurityMessage] = useState('');
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() =>
+    hasToken ? loadCache<UserProfile | null>('cache_user_v1', null) : null
+  ); // Start as null (Guest)
+  const [inAppNotification, setInAppNotification] = useState<{ title: string; body: string } | null>(null);
+  const [actionToast, setActionToast] = useState<{ title: string; message?: string } | null>(null);
+  const inAppNotifTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const actionToastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pushInitRef = useRef(false);
+
+  // --- Firebase FCM Token (for Push Notifications) ---
+  const [fcmToken, setFcmToken] = useState<string>(() => localStorage.getItem('fcm_token') || '');
+
+  // --- PayTabs Return Handling ---
+  const [paytabsProcessing, setPaytabsProcessing] = useState<boolean>(false);
+  const [paytabsProcessingText, setPaytabsProcessingText] = useState<string>('');
+
+  const showInAppBanner = (title: string, body?: string) => {
+    setInAppNotification({ title, body: body || '' });
+    if (inAppNotifTimeout.current) clearTimeout(inAppNotifTimeout.current);
+    inAppNotifTimeout.current = setTimeout(() => setInAppNotification(null), 4000);
+  };
+
+  const showActionToast = (title: string, message?: string, duration = 2000) => {
+    setActionToast({ title, message });
+    if (actionToastTimeout.current) clearTimeout(actionToastTimeout.current);
+    actionToastTimeout.current = setTimeout(() => setActionToast(null), duration);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (inAppNotifTimeout.current) clearTimeout(inAppNotifTimeout.current);
+      if (actionToastTimeout.current) clearTimeout(actionToastTimeout.current);
+    };
+  }, []);
+
   const showLocalNotification = async (notification: PushNotificationSchema) => {
-    if (typeof window === 'undefined' || typeof Notification === 'undefined') return;
+    if (typeof window === 'undefined') return;
 
     const title = notification?.title || 'إشعار جديد';
     const body =
@@ -229,45 +271,42 @@ const App: React.FC = () => {
     const display = () => {
       try {
         new Notification(title, { body });
+        return true;
       } catch (err) {
         console.warn('Unable to display notification', err);
+        return false;
       }
     };
 
+    if (typeof Notification === 'undefined') {
+      showInAppBanner(title, body);
+      return;
+    }
+
     if (Notification.permission === 'granted') {
-      const ok = display();
-      if (!ok) showInAppBanner(title, body);
+      const displayed = display();
+      if (!displayed) showInAppBanner(title, body);
       return;
     }
 
     if (Notification.permission === 'default') {
       try {
         const permission = await Notification.requestPermission();
-        if (permission === 'granted') display();
+        if (permission === 'granted') {
+          const displayed = display();
+          if (!displayed) showInAppBanner(title, body);
+        } else {
+          showInAppBanner(title, body);
+        }
       } catch (err) {
         console.warn('Notification permission failed', err);
+        showInAppBanner(title, body);
       }
+      return;
     }
+
+    showInAppBanner(title, body);
   };
-
-  const hasToken = Boolean(localStorage.getItem('token'));
-  const [currentView, setCurrentView] = useState<View>(View.HOME);
-  const [currencyCode, setCurrencyCode] = useState<string>(() => {
-    return localStorage.getItem('currencyCode') || 'USD';
-  });
-  const [isSecurityBlocked, setIsSecurityBlocked] = useState(false);
-  const [securityMessage, setSecurityMessage] = useState('');
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() =>
-    hasToken ? loadCache<UserProfile | null>('cache_user_v1', null) : null
-  ); // Start as null (Guest)
-  const pushInitRef = useRef(false);
-
-  // --- Firebase FCM Token (for Push Notifications) ---
-  const [fcmToken, setFcmToken] = useState<string>(() => localStorage.getItem('fcm_token') || '');
-
-  // --- PayTabs Return Handling ---
-  const [paytabsProcessing, setPaytabsProcessing] = useState<boolean>(false);
-  const [paytabsProcessingText, setPaytabsProcessingText] = useState<string>('');
 
 
 // ============================================================
@@ -347,6 +386,7 @@ useEffect(() => {
 useEffect(() => {
   return () => {
     if (inAppNotifTimeout.current) clearTimeout(inAppNotifTimeout.current);
+    if (actionToastTimeout.current) clearTimeout(actionToastTimeout.current);
   };
 }, []);
   
@@ -1171,7 +1211,7 @@ useEffect(() => {
             alert('تم شحن الرصيد بنجاح ✅');
             setCurrentView(View.WALLET);
           } else {
-            alert('تمت عملية الدفع بنجاح ✅');
+            showActionToast('تمت عملية الشراء', 'تمت عملية الشراء بنجاح يمكنك مراجعة طلبك داخل قائمة طلباتي');
             if (rv === 'cart') setCurrentView(View.CART);
             else if (rv === 'wallet') setCurrentView(View.WALLET);
             else if (rv === 'orders') setCurrentView(View.ORDERS);
@@ -1261,6 +1301,7 @@ useEffect(() => {
         }
 
         await syncAfterOrder();
+        showActionToast('تمت عملية الشراء', 'تمت عملية الشراء بنجاح يمكنك مراجعة طلبك داخل قائمة طلباتي');
       })();
   };
 
@@ -1315,35 +1356,36 @@ useEffect(() => {
   };
 
   // --- Cart Logic ---
-  const addToCart = (item: CartItem) => {
+  const addToCart = async (item: CartItem): Promise<boolean> => {
     if (!currentUser) {
         setShowLoginModal(true);
-        return;
+        return false;
     }
 
-    void (async () => {
-      try {
-        const payload = {
-          productId: item.productId,
-          quantity: item.quantity || 1,
-          // snapshots/options
-          apiConfig: item.apiConfig,
-          selectedRegion: item.selectedRegion,
-          selectedDenomination: item.selectedDenomination,
-          denominationId: item.selectedDenomination?.id,
-          regionId: item.selectedRegion?.id,
-          customInputValue: item.customInputValue,
-          customInputLabel: item.customInputLabel,
-        };
+    try {
+      const payload = {
+        productId: item.productId,
+        quantity: item.quantity || 1,
+        // snapshots/options
+        apiConfig: item.apiConfig,
+        selectedRegion: item.selectedRegion,
+        selectedDenomination: item.selectedDenomination,
+        denominationId: item.selectedDenomination?.id,
+        regionId: item.selectedRegion?.id,
+        customInputValue: item.customInputValue,
+        customInputLabel: item.customInputLabel,
+      };
 
-        const res = await cartService.add(payload);
-        const created = res?.data as CartItem;
-        setCartItems(prev => [created, ...prev]);
-      } catch (error) {
-        console.error('Add to cart failed', error);
-        alert('حدث خطأ أثناء إضافة العنصر للسلة');
-      }
-    })();
+      const res = await cartService.add(payload);
+      const created = res?.data as CartItem;
+      setCartItems(prev => [created, ...prev]);
+      showActionToast('تمت الإضافة', 'تمت الإضافة إلى السلة بنجاح');
+      return true;
+    } catch (error) {
+      console.error('Add to cart failed', error);
+      alert('حدث خطأ أثناء إضافة العنصر للسلة');
+      return false;
+    }
   };
 
   const removeFromCart = (itemId: string) => {
@@ -1443,7 +1485,7 @@ useEffect(() => {
             console.warn('Failed to clear cart on server', e);
           }
 
-          alert('تم شراء جميع العناصر بنجاح! تجد الأكواد في قائمة طلباتي.');
+          showActionToast('تمت عملية الشراء', 'تمت عملية الشراء بنجاح يمكنك مراجعة طلبك داخل قائمة طلباتي');
           setCartItems([]);
           setIsBulkCheckout(false);
       } else if (activeCheckoutItem) {
@@ -1477,7 +1519,7 @@ useEffect(() => {
           }
 
           await syncAfterOrder();
-          alert('تمت عملية الشراء بنجاح! تجد الكود في قائمة طلباتي.');
+          showActionToast('تمت عملية الشراء', 'تمت عملية الشراء بنجاح يمكنك مراجعة طلبك داخل قائمة طلباتي');
           // Remove from cart (which triggers server delete)
           removeFromCart(activeCheckoutItem.id);
           setActiveCheckoutItem(null);
@@ -1982,6 +2024,21 @@ useEffect(() => {
             <div className="bg-[#1f212e] border border-gray-700 rounded-2xl p-6 w-[90%] max-w-xs text-center shadow-2xl">
               <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
               <p className="text-sm text-gray-200">{paytabsProcessingText || 'جاري المعالجة...'}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Action success toast */}
+        {actionToast && (
+          <div className="absolute inset-x-0 top-6 flex justify-center z-[125] px-4 pointer-events-none">
+            <div className="w-full max-w-sm bg-white/95 text-right text-gray-900 rounded-2xl shadow-[0_15px_40px_rgba(16,185,129,0.35)] border border-emerald-100 px-4 py-3 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                <CheckCircle size={24} />
+              </div>
+              <div className="flex flex-col leading-tight">
+                <span className="text-[13px] font-extrabold text-emerald-700">{actionToast.title}</span>
+                {actionToast.message && <span className="text-xs text-emerald-600">{actionToast.message}</span>}
+              </div>
             </div>
           </div>
         )}

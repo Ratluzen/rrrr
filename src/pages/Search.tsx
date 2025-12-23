@@ -9,7 +9,7 @@ interface Props {
   formatPrice: (price: number) => string;
   products: Product[];
   categories: Category[];
-  addToCart: (item: CartItem) => void;
+  addToCart: (item: CartItem) => Promise<boolean>;
   userBalance?: number;
   onPurchase: (
     itemName: string, 
