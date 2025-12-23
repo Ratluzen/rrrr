@@ -244,19 +244,6 @@ const App: React.FC = () => {
     inAppNotifTimeout.current = setTimeout(() => setInAppNotification(null), 4000);
   };
 
-  const showCartToast = (message: string) => {
-    setCartToast(message);
-    if (cartToastTimeout.current) clearTimeout(cartToastTimeout.current);
-    cartToastTimeout.current = setTimeout(() => setCartToast(null), 2000);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (inAppNotifTimeout.current) clearTimeout(inAppNotifTimeout.current);
-      if (cartToastTimeout.current) clearTimeout(cartToastTimeout.current);
-    };
-  }, []);
-
   const showLocalNotification = async (notification: PushNotificationSchema) => {
     if (typeof window === 'undefined') return;
 
