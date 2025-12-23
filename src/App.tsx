@@ -226,7 +226,9 @@ const App: React.FC = () => {
     hasToken ? loadCache<UserProfile | null>('cache_user_v1', null) : null
   ); // Start as null (Guest)
   const [inAppNotification, setInAppNotification] = useState<{ title: string; body: string } | null>(null);
+  const [cartToast, setCartToast] = useState<string | null>(null);
   const inAppNotifTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cartToastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pushInitRef = useRef(false);
 
   // --- Firebase FCM Token (for Push Notifications) ---
@@ -1339,35 +1341,36 @@ useEffect(() => {
   };
 
   // --- Cart Logic ---
-  const addToCart = (item: CartItem) => {
+  const addToCart = async (item: CartItem): Promise<boolean> => {
     if (!currentUser) {
         setShowLoginModal(true);
-        return;
+        return false;
     }
 
-    void (async () => {
-      try {
-        const payload = {
-          productId: item.productId,
-          quantity: item.quantity || 1,
-          // snapshots/options
-          apiConfig: item.apiConfig,
-          selectedRegion: item.selectedRegion,
-          selectedDenomination: item.selectedDenomination,
-          denominationId: item.selectedDenomination?.id,
-          regionId: item.selectedRegion?.id,
-          customInputValue: item.customInputValue,
-          customInputLabel: item.customInputLabel,
-        };
+    try {
+      const payload = {
+        productId: item.productId,
+        quantity: item.quantity || 1,
+        // snapshots/options
+        apiConfig: item.apiConfig,
+        selectedRegion: item.selectedRegion,
+        selectedDenomination: item.selectedDenomination,
+        denominationId: item.selectedDenomination?.id,
+        regionId: item.selectedRegion?.id,
+        customInputValue: item.customInputValue,
+        customInputLabel: item.customInputLabel,
+      };
 
-        const res = await cartService.add(payload);
-        const created = res?.data as CartItem;
-        setCartItems(prev => [created, ...prev]);
-      } catch (error) {
-        console.error('Add to cart failed', error);
-        alert('حدث خطأ أثناء إضافة العنصر للسلة');
-      }
-    })();
+      const res = await cartService.add(payload);
+      const created = res?.data as CartItem;
+      setCartItems(prev => [created, ...prev]);
+      showCartToast('تمت الإضافة إلى السلة بنجاح');
+      return true;
+    } catch (error) {
+      console.error('Add to cart failed', error);
+      alert('حدث خطأ أثناء إضافة العنصر للسلة');
+      return false;
+    }
   };
 
   const removeFromCart = (itemId: string) => {
@@ -2006,6 +2009,21 @@ useEffect(() => {
             <div className="bg-[#1f212e] border border-gray-700 rounded-2xl p-6 w-[90%] max-w-xs text-center shadow-2xl">
               <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
               <p className="text-sm text-gray-200">{paytabsProcessingText || 'جاري المعالجة...'}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Cart success toast */}
+        {cartToast && (
+          <div className="absolute inset-x-0 top-6 flex justify-center z-[125] px-4 pointer-events-none">
+            <div className="w-full max-w-sm bg-white/95 text-right text-gray-900 rounded-2xl shadow-[0_15px_40px_rgba(16,185,129,0.35)] border border-emerald-100 px-4 py-3 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                <CheckCircle size={24} />
+              </div>
+              <div className="flex flex-col leading-tight">
+                <span className="text-[13px] font-extrabold text-emerald-700">تمت الإضافة</span>
+                <span className="text-xs text-emerald-600">{cartToast}</span>
+              </div>
             </div>
           </div>
         )}
