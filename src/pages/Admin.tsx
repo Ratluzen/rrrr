@@ -430,39 +430,40 @@ const getOrderDate = (o: any) => {
   });
 
   const loadAdminOrdersPage = async (mode: 'replace' | 'append' = 'replace') => {
-      const nextSkip = mode === 'append' ? orders.length : 0;
-      if (mode === 'append' && ordersLoadingMore) return;
+    const search = orderSearchQuery.trim();
+    const nextSkip = mode === 'append' ? orders.length : 0;
+    if (mode === 'append' && ordersLoadingMore) return;
+
+    if (mode === 'replace') {
+      setOrdersRefreshing(true);
+    } else {
+      setOrdersLoadingMore(true);
+    }
+
+    try {
+      const res = await orderService.getAllPaged(nextSkip, ADMIN_ORDERS_PAGE_SIZE, search || undefined);
+      const { items, hasMore } = extractOrdersFromResponse(res?.data, ADMIN_ORDERS_PAGE_SIZE);
 
       if (mode === 'replace') {
-          setOrdersRefreshing(true);
+        setOrders(items);
       } else {
-          setOrdersLoadingMore(true);
+        setOrders(prev => [...prev, ...items]);
       }
 
-      try {
-          const res = await orderService.getAllPaged(nextSkip, ADMIN_ORDERS_PAGE_SIZE);
-          const { items, hasMore } = extractOrdersFromResponse(res?.data, ADMIN_ORDERS_PAGE_SIZE);
-
-          if (mode === 'replace') {
-              setOrders(items);
-          } else {
-              setOrders(prev => [...prev, ...items]);
-          }
-
-          setOrdersHasMore(hasMore);
-      } catch (error) {
-          console.warn('Failed to load admin orders page', error);
-          if (mode === 'replace') {
-              setOrders([]);
-              setOrdersHasMore(false);
-          }
-      } finally {
-          if (mode === 'replace') {
-              setOrdersRefreshing(false);
-          } else {
-              setOrdersLoadingMore(false);
-          }
+      setOrdersHasMore(hasMore);
+    } catch (error) {
+      console.warn('Failed to load admin orders page', error);
+      if (mode === 'replace') {
+        setOrders([]);
+        setOrdersHasMore(false);
       }
+    } finally {
+      if (mode === 'replace') {
+        setOrdersRefreshing(false);
+      } else {
+        setOrdersLoadingMore(false);
+      }
+    }
   };
 
   useEffect(() => {
@@ -470,6 +471,12 @@ const getOrderDate = (o: any) => {
       setOrdersLoadingMore(false);
     }
   }, [activeTab, orderSearchQuery, orderFilter]);
+
+  // Trigger server-side search whenever the search query changes (or resets)
+  useEffect(() => {
+    loadAdminOrdersPage('replace');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderSearchQuery]);
 
 
   const handleOpenFulfillment = (order: Order) => {
