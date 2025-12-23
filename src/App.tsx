@@ -215,19 +215,7 @@ const normalizeTransactionsFromApi = (data: any): Transaction[] =>
 
 
 const App: React.FC = () => {
-  const [inAppNotification, setInAppNotification] = useState<{ title: string; body: string } | null>(null);
-  const inAppNotifTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const showLocalNotification = async (notification: PushNotificationSchema) => {
-    const showInAppBanner = (title: string, body: string) => {
-      if (typeof window === 'undefined') return;
-      if (inAppNotifTimeout.current) {
-        clearTimeout(inAppNotifTimeout.current);
-      }
-      setInAppNotification({ title, body });
-      inAppNotifTimeout.current = setTimeout(() => setInAppNotification(null), 5000);
-    };
-
     if (typeof window === 'undefined' || typeof Notification === 'undefined') return;
 
     const title = notification?.title || 'إشعار جديد';
@@ -241,10 +229,8 @@ const App: React.FC = () => {
     const display = () => {
       try {
         new Notification(title, { body });
-        return true;
       } catch (err) {
         console.warn('Unable to display notification', err);
-        return false;
       }
     };
 
@@ -257,21 +243,11 @@ const App: React.FC = () => {
     if (Notification.permission === 'default') {
       try {
         const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-          const ok = display();
-          if (!ok) showInAppBanner(title, body);
-        } else {
-          showInAppBanner(title, body);
-        }
+        if (permission === 'granted') display();
       } catch (err) {
         console.warn('Notification permission failed', err);
-        showInAppBanner(title, body);
       }
-      return;
     }
-
-    // Permission denied or unsupported; fallback to in-app banner
-    showInAppBanner(title, body);
   };
 
   const hasToken = Boolean(localStorage.getItem('token'));

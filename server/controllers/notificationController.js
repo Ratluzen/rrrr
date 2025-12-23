@@ -240,10 +240,10 @@ const notifyAdminsPush = async ({ order, title, message, extraData } = {}) => {
     return { success: false, reason: 'no-admin-users', adminIds: [] };
   }
 
-  const pushPayload = buildOrderPushPayload(order || null, {
+  const pushPayload = buildOrderPushPayload(order, {
     title: title || undefined,
     body: message || undefined,
-    data: { type: 'admin-order', ...(extraData || {}) },
+    data: { type: 'admin-order' },
   });
 
   await Promise.all(
