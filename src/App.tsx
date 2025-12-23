@@ -235,7 +235,8 @@ const App: React.FC = () => {
     };
 
     if (Notification.permission === 'granted') {
-      display();
+      const ok = display();
+      if (!ok) showInAppBanner(title, body);
       return;
     }
 
@@ -341,6 +342,13 @@ useEffect(() => {
   };
   void syncToken();
 }, [fcmToken, currentUser?.id]);
+
+// Clear in-app notification timeout on unmount
+useEffect(() => {
+  return () => {
+    if (inAppNotifTimeout.current) clearTimeout(inAppNotifTimeout.current);
+  };
+}, []);
   
   // --- Global App State (Lifted for Admin Control) ---
   const [products, setProducts] = useState<Product[]>(() => loadCache<Product[]>('cache_products_v1', INITIAL_PRODUCTS));
@@ -1974,6 +1982,16 @@ useEffect(() => {
             <div className="bg-[#1f212e] border border-gray-700 rounded-2xl p-6 w-[90%] max-w-xs text-center shadow-2xl">
               <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
               <p className="text-sm text-gray-200">{paytabsProcessingText || 'جاري المعالجة...'}</p>
+            </div>
+          </div>
+        )}
+
+        {/* In-app notification banner (foreground FCM fallback) */}
+        {inAppNotification && (
+          <div className="absolute top-4 inset-x-0 flex justify-center z-[120] px-4">
+            <div className="bg-[#1f212e]/95 border border-emerald-500/60 rounded-2xl shadow-2xl px-4 py-3 w-full max-w-md">
+              <div className="text-sm font-semibold text-emerald-200 truncate">{inAppNotification.title}</div>
+              <div className="text-xs text-gray-200 mt-1 line-clamp-2">{inAppNotification.body}</div>
             </div>
           </div>
         )}
