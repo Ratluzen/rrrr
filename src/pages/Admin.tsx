@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   ArrowLeft, Plus, Trash2, Edit2, Save, X, 
   Package, Layers, FileText, ShoppingBag,
@@ -151,18 +151,18 @@ const Admin: React.FC<Props> = ({
   useEffect(() => {
     const refreshAdminData = async () => {
       try {
-        const [p, c, o, u, i] = await Promise.all([
+        const [p, c, u, i] = await Promise.all([
           productService.getAll(),
           contentService.getCategories(),
-          orderService.getAll(),
           userService.getAll(),
           inventoryService.getAll(),
         ]);
         if (p?.data) setProducts(p.data);
         if (c?.data) setCategories(c.data);
-        if (o?.data) setOrders(o.data);
         if (u?.data) setUsers(u.data);
         if (i?.data) setInventory(i.data);
+
+        await loadAdminOrders('replace');
       } catch (e) {
         console.warn('Failed to refresh admin data', e);
       }
@@ -187,9 +187,9 @@ const getOrderDate = (o: any) => {
   // Orders State
   const [orderFilter, setOrderFilter] = useState<'all' | 'pending' | 'completed' | 'cancelled'>('all');
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
-  const [ordersVisibleCount, setOrdersVisibleCount] = useState<number>(10);
-  const ordersSentinelRef = useRef<HTMLDivElement | null>(null);
   const [ordersLoadingMore, setOrdersLoadingMore] = useState(false);
+  const [ordersHasMore, setOrdersHasMore] = useState<boolean>(false);
+  const [ordersSkip, setOrdersSkip] = useState<number>(0);
   const [fulfillmentOrder, setFulfillmentOrder] = useState<Order | null>(null);
   const [fulfillmentCode, setFulfillmentCode] = useState('');
   
@@ -199,6 +199,54 @@ const getOrderDate = (o: any) => {
   // Cancellation Modal State
   const [cancellationOrder, setCancellationOrder] = useState<Order | null>(null);
   const [cancellationReason, setCancellationReason] = useState('');
+
+  const normalizeAdminOrders = (items: any[]): Order[] =>
+    (items || []).map((o: any) => ({
+      ...o,
+      date: getOrderDate(o),
+    }));
+
+  const loadAdminOrders = async (mode: 'replace' | 'append' = 'replace') => {
+    if (ordersLoadingMore && mode === 'append') return;
+
+    const nextSkip = mode === 'append' ? ordersSkip : 0;
+
+    if (mode === 'replace') {
+      setOrdersHasMore(true);
+      setOrdersSkip(0);
+    }
+    setOrdersLoadingMore(true);
+
+    try {
+      const res = await orderService.getAllPaged(nextSkip, 10);
+      const data: any = res?.data;
+      const items = Array.isArray(data?.items)
+        ? data.items
+        : Array.isArray(data)
+        ? data
+        : [];
+      const hasMore = typeof data?.hasMore === 'boolean' ? data.hasMore : items.length === 10;
+      const normalized = normalizeAdminOrders(items);
+
+      if (mode === 'replace') {
+        setOrders(normalized);
+      } else {
+        setOrders(prev => [...prev, ...normalized]);
+      }
+
+      setOrdersSkip(nextSkip + items.length);
+      setOrdersHasMore(hasMore);
+    } catch (error) {
+      console.warn('Failed to load admin orders', error);
+      if (mode === 'replace') {
+        setOrders([]);
+        setOrdersSkip(0);
+        setOrdersHasMore(false);
+      }
+    } finally {
+      setOrdersLoadingMore(false);
+    }
+  };
 
   // Terms State
   const [termsLang, setTermsLang] = useState<'ar' | 'en'>('ar');
@@ -395,13 +443,6 @@ const getOrderDate = (o: any) => {
 
       return matchesStatus && matchesSearch;
   });
-
-  useEffect(() => {
-    if (activeTab === 'orders') {
-      setOrdersVisibleCount(10);
-      setOrdersLoadingMore(false);
-    }
-  }, [activeTab, orderSearchQuery, orderFilter]);
 
 
   const handleOpenFulfillment = (order: Order) => {
@@ -1853,7 +1894,7 @@ try {
                           {orderSearchQuery ? 'لا توجد طلبات تطابق بحثك' : 'لا توجد طلبات'}
                       </div>
                   ) : (
-                      filteredOrders.slice(0, ordersVisibleCount).map(order => (
+                      filteredOrders.map(order => (
                           <div key={order.id} className="bg-[#242636] p-4 rounded-xl border border-gray-700 shadow-sm flex flex-col gap-3">
                               <div className="flex justify-between items-start">
                                   <div className="flex items-center gap-3">
@@ -1969,13 +2010,14 @@ try {
                   )}
               </div>
 
-              {filteredOrders.length > ordersVisibleCount && (
+              {ordersHasMore && (
                   <div className="flex justify-center pt-3">
                       <button
-                          onClick={() => setOrdersVisibleCount(prev => prev + 10)}
-                          className="bg-yellow-400 text-black px-6 py-2 rounded-xl font-black hover:opacity-90 transition"
+                          onClick={() => loadAdminOrders('append')}
+                          disabled={ordersLoadingMore}
+                          className="bg-yellow-400 text-black px-6 py-2 rounded-xl font-black hover:opacity-90 transition disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                          عرض المزيد
+                          {ordersLoadingMore ? 'جاري التحميل...' : 'عرض المزيد'}
                       </button>
                   </div>
               )}
@@ -2021,16 +2063,6 @@ try {
                     </div>
                  </div>
                ))}
-              {filteredOrders.length > ordersVisibleCount && (
-                <div className="flex justify-center pt-3">
-                  <button
-                    onClick={() => setOrdersVisibleCount(c => Math.min(c + 10, filteredOrders.length))}
-                    className="px-4 py-2 rounded-xl bg-[#242636] border border-gray-700 text-gray-200 text-sm font-bold hover:bg-[#2f3245] transition-colors"
-                  >
-                    عرض المزيد
-                  </button>
-                </div>
-              )}
              </div>
           </div>
         )}
