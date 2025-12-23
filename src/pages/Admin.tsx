@@ -445,8 +445,8 @@ const getOrderDate = (o: any) => {
     }
 
     try {
-      const res = await orderService.getAllPaged(nextSkip, pageSize, search || undefined);
-      const { items, hasMore } = extractOrdersFromResponse(res?.data, pageSize);
+      const res = await orderService.getAllPaged(nextSkip, ADMIN_ORDERS_PAGE_SIZE, search || undefined);
+      const { items, hasMore } = extractOrdersFromResponse(res?.data, ADMIN_ORDERS_PAGE_SIZE);
 
       if (mode === 'replace') {
         setOrders(items);
