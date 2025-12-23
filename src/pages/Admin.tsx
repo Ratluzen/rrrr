@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   ArrowLeft, Plus, Trash2, Edit2, Save, X, 
   Package, Layers, FileText, ShoppingBag,
@@ -29,6 +29,7 @@ import { View, Product, Category, AppTerms, Banner, UserProfile, Announcement, R
 import { PREDEFINED_REGIONS, INITIAL_CURRENCIES } from '../constants';
 import { contentService, productService, orderService, inventoryService, userService, settingsService, pushService } from '../services/api';
 import InvoiceModal from '../components/InvoiceModal';
+import { extractOrdersFromResponse } from '../utils/orders';
 
 interface Props {
   setView: (view: View) => void;
@@ -130,6 +131,8 @@ const AVAILABLE_ICONS = [
   { id: 'palette', icon: Palette, label: 'ألوان' },
 ];
 
+const ADMIN_ORDERS_PAGE_SIZE = 10;
+
 const Admin: React.FC<Props> = ({ 
   setView, 
   products, setProducts, 
@@ -151,21 +154,21 @@ const Admin: React.FC<Props> = ({
   useEffect(() => {
     const refreshAdminData = async () => {
       try {
-        const [p, c, o, u, i] = await Promise.all([
+        const [p, c, u, i] = await Promise.all([
           productService.getAll(),
           contentService.getCategories(),
-          orderService.getAll(),
           userService.getAll(),
           inventoryService.getAll(),
         ]);
         if (p?.data) setProducts(p.data);
         if (c?.data) setCategories(c.data);
-        if (o?.data) setOrders(o.data);
         if (u?.data) setUsers(u.data);
         if (i?.data) setInventory(i.data);
       } catch (e) {
         console.warn('Failed to refresh admin data', e);
       }
+
+      await loadAdminOrdersPage('replace');
     };
     refreshAdminData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -187,8 +190,8 @@ const getOrderDate = (o: any) => {
   // Orders State
   const [orderFilter, setOrderFilter] = useState<'all' | 'pending' | 'completed' | 'cancelled'>('all');
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
-  const [ordersVisibleCount, setOrdersVisibleCount] = useState<number>(10);
-  const ordersSentinelRef = useRef<HTMLDivElement | null>(null);
+  const [ordersHasMore, setOrdersHasMore] = useState(false);
+  const [ordersRefreshing, setOrdersRefreshing] = useState(false);
   const [ordersLoadingMore, setOrdersLoadingMore] = useState(false);
   const [fulfillmentOrder, setFulfillmentOrder] = useState<Order | null>(null);
   const [fulfillmentCode, setFulfillmentCode] = useState('');
@@ -396,9 +399,44 @@ const getOrderDate = (o: any) => {
       return matchesStatus && matchesSearch;
   });
 
+  const loadAdminOrdersPage = async (mode: 'replace' | 'append' = 'replace') => {
+      const nextSkip = mode === 'append' ? orders.length : 0;
+      if (mode === 'append' && ordersLoadingMore) return;
+
+      if (mode === 'replace') {
+          setOrdersRefreshing(true);
+      } else {
+          setOrdersLoadingMore(true);
+      }
+
+      try {
+          const res = await orderService.getAllPaged(nextSkip, ADMIN_ORDERS_PAGE_SIZE);
+          const { items, hasMore } = extractOrdersFromResponse(res?.data, ADMIN_ORDERS_PAGE_SIZE);
+
+          if (mode === 'replace') {
+              setOrders(items);
+          } else {
+              setOrders(prev => [...prev, ...items]);
+          }
+
+          setOrdersHasMore(hasMore);
+      } catch (error) {
+          console.warn('Failed to load admin orders page', error);
+          if (mode === 'replace') {
+              setOrders([]);
+              setOrdersHasMore(false);
+          }
+      } finally {
+          if (mode === 'replace') {
+              setOrdersRefreshing(false);
+          } else {
+              setOrdersLoadingMore(false);
+          }
+      }
+  };
+
   useEffect(() => {
     if (activeTab === 'orders') {
-      setOrdersVisibleCount(10);
       setOrdersLoadingMore(false);
     }
   }, [activeTab, orderSearchQuery, orderFilter]);
@@ -1848,12 +1886,16 @@ try {
               </div>
 
               <div className="space-y-3">
-                  {filteredOrders.length === 0 ? (
+                  {ordersRefreshing ? (
+                      <div className="text-center py-12 text-gray-500">
+                          جاري تحميل الطلبات...
+                      </div>
+                  ) : filteredOrders.length === 0 ? (
                       <div className="text-center py-12 text-gray-500">
                           {orderSearchQuery ? 'لا توجد طلبات تطابق بحثك' : 'لا توجد طلبات'}
                       </div>
                   ) : (
-                      filteredOrders.slice(0, ordersVisibleCount).map(order => (
+                      filteredOrders.map(order => (
                           <div key={order.id} className="bg-[#242636] p-4 rounded-xl border border-gray-700 shadow-sm flex flex-col gap-3">
                               <div className="flex justify-between items-start">
                                   <div className="flex items-center gap-3">
@@ -1963,19 +2005,20 @@ try {
                                       </span>
                                       <p className="text-red-100 text-xs">{order.rejectionReason}</p>
                                   </div>
-                              )}
+                              )} 
                           </div>
                       ))
                   )}
               </div>
 
-              {filteredOrders.length > ordersVisibleCount && (
+              {ordersHasMore && (
                   <div className="flex justify-center pt-3">
                       <button
-                          onClick={() => setOrdersVisibleCount(prev => prev + 10)}
-                          className="bg-yellow-400 text-black px-6 py-2 rounded-xl font-black hover:opacity-90 transition"
+                          onClick={() => loadAdminOrdersPage('append')}
+                          className="bg-yellow-400 text-black px-6 py-2 rounded-xl font-black hover:opacity-90 transition disabled:opacity-50"
+                          disabled={ordersLoadingMore}
                       >
-                          عرض المزيد
+                          {ordersLoadingMore ? 'جاري التحميل...' : 'عرض المزيد'}
                       </button>
                   </div>
               )}
@@ -2021,16 +2064,6 @@ try {
                     </div>
                  </div>
                ))}
-              {filteredOrders.length > ordersVisibleCount && (
-                <div className="flex justify-center pt-3">
-                  <button
-                    onClick={() => setOrdersVisibleCount(c => Math.min(c + 10, filteredOrders.length))}
-                    className="px-4 py-2 rounded-xl bg-[#242636] border border-gray-700 text-gray-200 text-sm font-bold hover:bg-[#2f3245] transition-colors"
-                  >
-                    عرض المزيد
-                  </button>
-                </div>
-              )}
              </div>
           </div>
         )}
