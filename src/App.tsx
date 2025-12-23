@@ -238,17 +238,24 @@ const App: React.FC = () => {
   const [paytabsProcessing, setPaytabsProcessing] = useState<boolean>(false);
   const [paytabsProcessingText, setPaytabsProcessingText] = useState<string>('');
 
-  const showCartToast = (message: string) => {
-    setCartToast(message);
-    if (cartToastTimeout.current) clearTimeout(cartToastTimeout.current);
-    cartToastTimeout.current = setTimeout(() => setCartToast(null), 3000);
-  };
-
   const showInAppBanner = (title: string, body?: string) => {
     setInAppNotification({ title, body: body || '' });
     if (inAppNotifTimeout.current) clearTimeout(inAppNotifTimeout.current);
     inAppNotifTimeout.current = setTimeout(() => setInAppNotification(null), 4000);
   };
+
+  const showActionToast = (title: string, message?: string, duration = 2000) => {
+    setActionToast({ title, message });
+    if (actionToastTimeout.current) clearTimeout(actionToastTimeout.current);
+    actionToastTimeout.current = setTimeout(() => setActionToast(null), duration);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (inAppNotifTimeout.current) clearTimeout(inAppNotifTimeout.current);
+      if (actionToastTimeout.current) clearTimeout(actionToastTimeout.current);
+    };
+  }, []);
 
   const showLocalNotification = async (notification: PushNotificationSchema) => {
     if (typeof window === 'undefined') return;
@@ -379,7 +386,7 @@ useEffect(() => {
 useEffect(() => {
   return () => {
     if (inAppNotifTimeout.current) clearTimeout(inAppNotifTimeout.current);
-    if (cartToastTimeout.current) clearTimeout(cartToastTimeout.current);
+    if (actionToastTimeout.current) clearTimeout(actionToastTimeout.current);
   };
 }, []);
   
@@ -1204,7 +1211,7 @@ useEffect(() => {
             alert('تم شحن الرصيد بنجاح ✅');
             setCurrentView(View.WALLET);
           } else {
-            alert('تمت عملية الدفع بنجاح ✅');
+            showActionToast('تمت عملية الشراء', 'تمت عملية الشراء بنجاح يمكنك مراجعة طلبك داخل قائمة طلباتي');
             if (rv === 'cart') setCurrentView(View.CART);
             else if (rv === 'wallet') setCurrentView(View.WALLET);
             else if (rv === 'orders') setCurrentView(View.ORDERS);
@@ -1294,6 +1301,7 @@ useEffect(() => {
         }
 
         await syncAfterOrder();
+        showActionToast('تمت عملية الشراء', 'تمت عملية الشراء بنجاح يمكنك مراجعة طلبك داخل قائمة طلباتي');
       })();
   };
 
@@ -1371,7 +1379,7 @@ useEffect(() => {
       const res = await cartService.add(payload);
       const created = res?.data as CartItem;
       setCartItems(prev => [created, ...prev]);
-      showCartToast('تمت الإضافة إلى السلة بنجاح');
+      showActionToast('تمت الإضافة', 'تمت الإضافة إلى السلة بنجاح');
       return true;
     } catch (error) {
       console.error('Add to cart failed', error);
@@ -1477,7 +1485,7 @@ useEffect(() => {
             console.warn('Failed to clear cart on server', e);
           }
 
-          alert('تم شراء جميع العناصر بنجاح! تجد الأكواد في قائمة طلباتي.');
+          showActionToast('تمت عملية الشراء', 'تمت عملية الشراء بنجاح يمكنك مراجعة طلبك داخل قائمة طلباتي');
           setCartItems([]);
           setIsBulkCheckout(false);
       } else if (activeCheckoutItem) {
@@ -1511,7 +1519,7 @@ useEffect(() => {
           }
 
           await syncAfterOrder();
-          alert('تمت عملية الشراء بنجاح! تجد الكود في قائمة طلباتي.');
+          showActionToast('تمت عملية الشراء', 'تمت عملية الشراء بنجاح يمكنك مراجعة طلبك داخل قائمة طلباتي');
           // Remove from cart (which triggers server delete)
           removeFromCart(activeCheckoutItem.id);
           setActiveCheckoutItem(null);
@@ -2020,8 +2028,8 @@ useEffect(() => {
           </div>
         )}
 
-        {/* Cart success toast */}
-        {cartToast && (
+        {/* Action success toast */}
+        {actionToast && (
           <div className="absolute inset-x-0 top-6 flex justify-center z-[125] px-4 pointer-events-none">
             <div className="w-full max-w-sm bg-white/95 text-right text-gray-900 rounded-2xl shadow-[0_15px_40px_rgba(16,185,129,0.35)] border border-emerald-100 px-4 py-3 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
