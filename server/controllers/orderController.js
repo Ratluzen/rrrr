@@ -27,29 +27,6 @@ const resolveCustomInputConfig = (product, regionId) => {
   return productCustomInput || null;
 };
 
-// Helpers shared with the payment controller
-const parseJsonField = (raw, fallback = null) => {
-  try {
-    if (raw === undefined || raw === null) return fallback;
-    if (typeof raw === 'object') return raw;
-    return JSON.parse(String(raw));
-  } catch {
-    return fallback;
-  }
-};
-
-const resolveCustomInputConfig = (product, regionId) => {
-  const regions = parseJsonField(product?.regions, null);
-  const region = Array.isArray(regions)
-    ? regions.find((r) => String(r?.id || '') === String(regionId || ''))
-    : null;
-
-  if (region?.customInput) return region.customInput;
-
-  const productCustomInput = parseJsonField(product?.customInput, null);
-  return productCustomInput || null;
-};
-
 const parseApiConfig = (raw) => {
   try {
     if (!raw) return null;

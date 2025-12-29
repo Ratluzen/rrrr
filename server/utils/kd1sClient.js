@@ -1,6 +1,21 @@
 const KD1S_API_URL = (process.env.KD1S_API_URL || 'https://kd1s.com/api/v2').replace(/\/$/, '');
 const KD1S_API_KEY = process.env.KD1S_API_KEY;
 
+let cachedFetch = null;
+
+const getFetch = async () => {
+  if (cachedFetch) return cachedFetch;
+  if (typeof fetch === 'function') {
+    cachedFetch = fetch;
+    return cachedFetch;
+  }
+
+  // Support older Node runtimes that do not ship a global fetch (e.g., Node 16)
+  const { default: nodeFetch } = await import('node-fetch');
+  cachedFetch = nodeFetch;
+  return cachedFetch;
+};
+
 const ensureConfigured = () => {
   if (!KD1S_API_KEY) {
     throw new Error('KD1S_API_KEY is not configured');
@@ -49,7 +64,9 @@ const placeOrder = async ({ serviceId, link, quantity }) => {
     quantity: String(parseQuantity(quantity)),
   });
 
-  const res = await fetch(`${KD1S_API_URL}`, {
+  const fetchFn = await getFetch();
+
+  const res = await fetchFn(`${KD1S_API_URL}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -94,7 +111,9 @@ const getOrderStatus = async (orderId) => {
     order: String(orderId),
   });
 
-  const res = await fetch(`${KD1S_API_URL}`, {
+  const fetchFn = await getFetch();
+
+  const res = await fetchFn(`${KD1S_API_URL}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
