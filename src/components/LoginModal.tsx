@@ -198,8 +198,9 @@ const LoginModal: React.FC<Props> = ({ isOpen, onClose, onLogin, terms }) => {
                             <div className="space-y-1.5 animate-fadeIn">
                                 <label className="text-xs font-bold text-gray-300 mr-1">البريد الإلكتروني</label>
                                 <div className="relative group">
-                                    <input 
+                                    <input
                                         type="email"
+                                        inputMode="email"
                                         pattern="[A-Za-z][A-Za-z0-9._%+-]*@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"
                                         value={email}
                                         onChange={(e) => setEmail(sanitizeEmailInput(e.target.value))}
@@ -215,10 +216,11 @@ const LoginModal: React.FC<Props> = ({ isOpen, onClose, onLogin, terms }) => {
                             <div className="space-y-1.5 animate-fadeIn">
                                 <label className="text-xs font-bold text-gray-300 mr-1">رقم الهاتف</label>
                                 <div className="relative group">
-                                    <input 
+                                    <input
                                         type="tel"
                                         inputMode="numeric"
                                         pattern="[0-9]*"
+                                        autoComplete="tel"
                                         value={phone}
                                         onChange={(e) => setPhone(sanitizePhoneInput(e.target.value))}
                                         className="w-full bg-[#242636] border border-gray-700 rounded-xl py-4 pr-11 pl-4 text-white text-right focus:border-yellow-400 focus:bg-[#2a2d3e] focus:outline-none transition-all text-sm shadow-inner placeholder-gray-600 dir-rtl"
