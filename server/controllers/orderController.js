@@ -1,6 +1,18 @@
 const asyncHandler = require('express-async-handler');
 const prisma = require('../config/db');
 const { generateShortId } = require('../utils/id');
+const { placeOrder: placeKd1sOrder, parseQuantity } = require('../utils/kd1sClient');
+
+const parseApiConfig = (raw) => {
+  try {
+    if (!raw) return null;
+    if (typeof raw === 'object') return raw;
+    return JSON.parse(String(raw));
+  } catch (e) {
+    console.warn('Failed to parse apiConfig', e?.message || e);
+    return null;
+  }
+};
 
 // Helper: normalize IDs to String or null (schema expects String/Nullable)
 const normalizeId = (val) => {
@@ -66,13 +78,10 @@ const createOrder = asyncHandler(async (req, res) => {
   let status = 'pending';
   let fulfillmentType = 'manual';
 
-  if (product && product.apiConfig) {
-    try {
-      const config = JSON.parse(product.apiConfig);
-      if (config && config.type) {
-        fulfillmentType = config.type;
-      }
-    } catch (e) {}
+  const apiConfig = parseApiConfig(product?.apiConfig);
+
+  if (apiConfig?.type) {
+    fulfillmentType = apiConfig.type;
   }
 
   let stockItemToUpdate = null;
@@ -125,6 +134,7 @@ const createOrder = asyncHandler(async (req, res) => {
       status,
       fulfillmentType,
       deliveredCode,
+      providerName: apiConfig?.providerName,
     };
 
     // Some schemas use Int/uuid auto IDs. Try with a readable id first, then fallback if it errors.
@@ -204,6 +214,58 @@ const createOrder = asyncHandler(async (req, res) => {
 
     return order;
   });
+
+  const shouldUseProvider =
+    apiConfig?.type === 'api' && apiConfig?.serviceId && result.status !== 'completed';
+
+  if (shouldUseProvider) {
+    try {
+      const providerOrder = await placeKd1sOrder({
+        serviceId: apiConfig.serviceId,
+        link: customInputValue || regionName || productName,
+        quantity: parseQuantity(quantityLabel || 1),
+      });
+
+      result = await prisma.order.update({
+        where: { id: result.id },
+        data: {
+          providerOrderId: providerOrder.orderId,
+          providerName: apiConfig?.providerName || 'KD1S',
+          fulfillmentType: 'api',
+          status: result.status === 'pending' ? 'pending' : result.status,
+        },
+      });
+    } catch (err) {
+      await prisma.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: userId },
+          data: { balance: { increment: priceNumber } },
+        });
+
+        await tx.transaction.create({
+          data: {
+            id: generateShortId(),
+            userId,
+            title: `استرداد: ${productName}`,
+            amount: priceNumber,
+            type: 'credit',
+            status: 'completed',
+          },
+        });
+
+        await tx.order.update({
+          where: { id: result.id },
+          data: {
+            status: 'cancelled',
+            rejectionReason: `KD1S: ${err?.message || err}`,
+          },
+        });
+      });
+
+      res.status(502);
+      throw new Error(`فشل تنفيذ الطلب عبر المزود: ${err?.message || err}`);
+    }
+  }
 
   res.status(201).json(result);
 });
