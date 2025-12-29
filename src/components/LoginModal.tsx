@@ -24,7 +24,7 @@ const LoginModal: React.FC<Props> = ({ isOpen, onClose, onLogin, terms }) => {
   const sanitizePhoneInput = (value: string) => value.replace(/\D/g, '');
 
   const isValidEnglishEmail = (value: string) => {
-    const emailPattern = /^[A-Za-z][A-Za-z0-9._%+-]*@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+    const emailPattern = /^[A-Za-z][A-Za-z0-9._%+-]*@[A-Za-z0-9._-]+\.[A-Za-z]{2,}$/;
     return emailPattern.test(value);
   };
   
