@@ -201,7 +201,7 @@ const LoginModal: React.FC<Props> = ({ isOpen, onClose, onLogin, terms }) => {
                                     <input
                                         type="email"
                                         inputMode="email"
-                                        pattern="[A-Za-z][A-Za-z0-9._%+-]*@[A-Za-z0-9._-]+\\.[A-Za-z]{2,}"
+                                        pattern="[A-Za-z][A-Za-z0-9._%+-]*@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"
                                         value={email}
                                         onChange={(e) => setEmail(sanitizeEmailInput(e.target.value))}
                                         className="w-full bg-[#242636] border border-gray-700 rounded-xl py-4 pr-11 pl-4 text-white text-right focus:border-yellow-400 focus:bg-[#2a2d3e] focus:outline-none transition-all text-sm shadow-inner placeholder-gray-600"
