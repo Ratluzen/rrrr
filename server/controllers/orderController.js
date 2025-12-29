@@ -14,29 +14,6 @@ const parseApiConfig = (raw) => {
   }
 };
 
-const parseJsonField = (raw, fallback = null) => {
-  try {
-    if (raw === undefined || raw === null) return fallback;
-    if (typeof raw === 'object') return raw;
-    return JSON.parse(String(raw));
-  } catch (e) {
-    console.warn('Failed to parse JSON field', e?.message || e);
-    return fallback;
-  }
-};
-
-const resolveCustomInputConfig = (product, regionId) => {
-  const regions = parseJsonField(product?.regions, null);
-  const region = Array.isArray(regions)
-    ? regions.find((r) => String(r?.id || '') === String(regionId || ''))
-    : null;
-
-  if (region?.customInput) return region.customInput;
-
-  const productCustomInput = parseJsonField(product?.customInput, null);
-  return productCustomInput || null;
-};
-
 // Helper: normalize IDs to String or null (schema expects String/Nullable)
 const normalizeId = (val) => {
   if (val === undefined || val === null || val === '') return null;
