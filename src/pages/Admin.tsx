@@ -3141,14 +3141,21 @@ try {
                                 <div>
                                     <label className="text-xs text-gray-400 mb-1.5 block font-bold">نوع التنفيذ</label>
                                     <div className="flex bg-[#13141f] p-1 rounded-xl border border-gray-700">
-                                        <button 
+                                        <button
                                             onClick={() => setProdForm({...prodForm, apiConfig: { ...prodForm.apiConfig, type: 'manual' }})}
                                             className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${prodForm.apiConfig?.type === 'manual' ? 'bg-gray-600 text-white shadow' : 'text-gray-400'}`}
                                         >
                                             يدوي (Manual)
                                         </button>
-                                        <button 
-                                            onClick={() => setProdForm({...prodForm, apiConfig: { ...prodForm.apiConfig, type: 'api' }})}
+                                        <button
+                                            onClick={() => setProdForm({
+                                              ...prodForm,
+                                              apiConfig: {
+                                                ...prodForm.apiConfig,
+                                                type: 'api',
+                                                httpMethod: prodForm.apiConfig?.httpMethod || 'POST',
+                                              }
+                                            })}
                                             className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${prodForm.apiConfig?.type === 'api' ? 'bg-purple-600 text-white shadow' : 'text-gray-400'}`}
                                         >
                                             API خارجي
@@ -3157,7 +3164,7 @@ try {
                                 </div>
 
                                 {prodForm.apiConfig?.type === 'api' && (
-                                    <div className="space-y-3 pt-2 border-t border-gray-700/50">
+                                    <div className="space-y-4 pt-2 border-t border-gray-700/50">
                                         <div>
                                             <label className="text-xs text-gray-400 mb-1 block">اسم المزود (Provider)</label>
                                             <input className="w-full bg-[#13141f] p-3 rounded-xl border border-gray-700 text-white text-xs outline-none focus:border-purple-500 transition-colors" placeholder="مثال: EzPin, MintRoute" value={prodForm.apiConfig?.providerName || ''} onChange={e => setProdForm({...prodForm, apiConfig: {...prodForm.apiConfig!, providerName: e.target.value}})} />
@@ -3165,6 +3172,45 @@ try {
                                         <div>
                                             <label className="text-xs text-gray-400 mb-1 block">معرف الخدمة (Service ID / SKU)</label>
                                             <input className="w-full bg-[#13141f] p-3 rounded-xl border border-gray-700 text-white text-xs outline-none focus:border-purple-500 transition-colors" placeholder="ID الخدمة عند المزود" value={prodForm.apiConfig?.serviceId || ''} onChange={e => setProdForm({...prodForm, apiConfig: {...prodForm.apiConfig!, serviceId: e.target.value}})} />
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                            <div className="md:col-span-2">
+                                                <label className="text-xs text-gray-400 mb-1 block">رابط التنفيذ (Endpoint)</label>
+                                                <input
+                                                  className="w-full bg-[#13141f] p-3 rounded-xl border border-gray-700 text-white text-xs outline-none focus:border-purple-500 transition-colors"
+                                                  placeholder="https://provider.com/fulfill"
+                                                  value={prodForm.apiConfig?.apiEndpoint || ''}
+                                                  onChange={e => setProdForm({...prodForm, apiConfig: { ...prodForm.apiConfig!, apiEndpoint: e.target.value }})}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-400 mb-1 block">طريقة الطلب</label>
+                                                <select
+                                                  className="w-full bg-[#13141f] p-3 rounded-xl border border-gray-700 text-white text-xs outline-none focus:border-purple-500 transition-colors"
+                                                  value={prodForm.apiConfig?.httpMethod || 'POST'}
+                                                  onChange={e => setProdForm({...prodForm, apiConfig: { ...prodForm.apiConfig!, httpMethod: e.target.value as 'GET' | 'POST' }})}
+                                                >
+                                                  <option value="POST">POST</option>
+                                                  <option value="GET">GET</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <label className="text-xs text-gray-400 block">قالب بيانات الطلب (لكل منتج)</label>
+                                                <span className="text-[10px] text-gray-500">يدعم متغيرات: {'{'}productId{'}'}, {'{'}serviceId{'}'}, {'{'}quantityLabel{'}'}, {'{'}regionName{'}'}, {'{'}customInputValue{'}'}</span>
+                                            </div>
+                                            <textarea
+                                              className="w-full bg-[#13141f] p-3 rounded-xl border border-gray-700 text-white text-xs outline-none focus:border-purple-500 transition-colors h-32 resize-none"
+                                              placeholder='مثال: {"serviceId":"{{serviceId}}","product":"{{productId}}","note":"{{quantityLabel}}"}'
+                                              value={prodForm.apiConfig?.payloadTemplate || ''}
+                                              onChange={e => setProdForm({...prodForm, apiConfig: { ...prodForm.apiConfig!, payloadTemplate: e.target.value }})}
+                                            />
+                                            <p className="text-[10px] text-gray-500 mt-2 leading-relaxed">
+                                                يتم إرسال هذا القالب كما هو لكل نوع منتج، مع استبدال المتغيرات بالقيم المختارة من الطلب الحالي. اتركه فارغاً إذا كان المزود لا يتطلب جسماً مخصصاً.
+                                            </p>
                                         </div>
                                     </div>
                                 )}

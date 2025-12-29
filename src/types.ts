@@ -23,6 +23,9 @@ export interface ApiConfig {
   providerName?: string; // e.g., 'EzPin', 'MintRoute'
   serviceId?: string; // SKU or ID at the provider
   autoApprove?: boolean;
+  apiEndpoint?: string; // Custom endpoint per product type
+  httpMethod?: 'GET' | 'POST'; // Request method for fulfillment
+  payloadTemplate?: string; // JSON body template
 }
 
 export interface CustomInputConfig {
