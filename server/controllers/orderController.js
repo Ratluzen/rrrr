@@ -74,6 +74,25 @@ const createOrder = asyncHandler(async (req, res) => {
     product = await prisma.product.findUnique({ where: { id: productIdNorm } });
   }
 
+  const activeCustomInput = resolveCustomInputConfig(product, regionIdNorm);
+  const resolvedCustomInputLabel = customInputLabel || activeCustomInput?.label;
+
+  if (activeCustomInput?.enabled && activeCustomInput?.required) {
+    if (!customInputValue || !String(customInputValue).trim()) {
+      res.status(400);
+      throw new Error('الرجاء إدخال المعلومات المطلوبة لهذا المنتج');
+    }
+  }
+
+  const trimmedCustomInputValue =
+    customInputValue && typeof customInputValue === 'string'
+      ? customInputValue.trim()
+      : customInputValue;
+
+  const normalizedQuantity = parseQuantity(quantity ?? quantityLabel ?? 1);
+  const normalizedQuantityLabel =
+    quantityLabel || (quantity ? String(normalizedQuantity) : undefined);
+
   // 3. Auto-Delivery Logic (Check Inventory)
   let deliveredCode = null;
   let status = 'pending';
@@ -127,10 +146,10 @@ const createOrder = asyncHandler(async (req, res) => {
       productCategory,
       regionName,
       regionId: regionIdNorm,
-      quantityLabel,
+      quantityLabel: normalizedQuantityLabel,
       denominationId: denominationIdNorm,
-      customInputValue,
-      customInputLabel,
+      customInputValue: trimmedCustomInputValue,
+      customInputLabel: resolvedCustomInputLabel,
       amount: priceNumber,
       status,
       fulfillmentType,
@@ -220,12 +239,12 @@ const createOrder = asyncHandler(async (req, res) => {
     apiConfig?.type === 'api' && apiConfig?.serviceId && result.status !== 'completed';
 
   if (shouldUseProvider) {
-    try {
-      const providerOrder = await placeKd1sOrder({
-        serviceId: apiConfig.serviceId,
-        link: customInputValue || regionName || productName,
-        quantity: parseQuantity(quantityLabel || 1),
-      });
+      try {
+        const providerOrder = await placeKd1sOrder({
+          serviceId: apiConfig.serviceId,
+          link: trimmedCustomInputValue || regionName || productName,
+          quantity: normalizedQuantity,
+        });
 
       result = await prisma.order.update({
         where: { id: result.id },

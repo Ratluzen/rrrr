@@ -32,6 +32,28 @@ const parseApiConfig = (raw) => {
   }
 };
 
+const parseJsonField = (raw, fallback = null) => {
+  try {
+    if (raw === undefined || raw === null) return fallback;
+    if (typeof raw === 'object') return raw;
+    return JSON.parse(String(raw));
+  } catch {
+    return fallback;
+  }
+};
+
+const resolveCustomInputConfig = (product, regionId) => {
+  const regions = parseJsonField(product?.regions, null);
+  const region = Array.isArray(regions)
+    ? regions.find((r) => String(r?.id || '') === String(regionId || ''))
+    : null;
+
+  if (region?.customInput) return region.customInput;
+
+  const productCustomInput = parseJsonField(product?.customInput, null);
+  return productCustomInput || null;
+};
+
 const normalizeId = (val) => {
   if (val === undefined || val === null || val === '') return null;
   if (typeof val === 'number') return String(val);
@@ -287,6 +309,22 @@ const finalizePayment = async ({ paymentId, tranRef, queryResult }) => {
 
       const apiConfig = parseApiConfig(product?.apiConfig);
 
+      const activeCustomInput = resolveCustomInputConfig(product, normalizeId(it?.regionId));
+      const trimmedCustomInputValue =
+        it?.customInputValue && typeof it.customInputValue === 'string'
+          ? it.customInputValue.trim()
+          : it?.customInputValue;
+
+      if (activeCustomInput?.enabled && activeCustomInput?.required) {
+        if (!trimmedCustomInputValue) {
+          throw new Error('الرجاء إدخال المعلومات المطلوبة لهذا المنتج');
+        }
+      }
+
+      const normalizedQuantity = parseQuantity(
+        it?.quantity ?? it?.selectedDenomination?.amount ?? it?.quantityLabel ?? 1
+      );
+
       // infer fulfillment type if possible
       if (apiConfig?.type) {
         fulfillmentType = apiConfig.type;
@@ -325,10 +363,11 @@ const finalizePayment = async ({ paymentId, tranRef, queryResult }) => {
         productCategory: it?.productCategory || product?.category || undefined,
         regionName: it?.regionName || undefined,
         regionId: normalizeId(it?.regionId),
-        quantityLabel: it?.quantityLabel || undefined,
+        quantityLabel:
+          it?.quantityLabel || (it?.quantity ? String(normalizedQuantity) : undefined),
         denominationId: normalizeId(it?.denominationId),
-        customInputValue: it?.customInputValue || undefined,
-        customInputLabel: it?.customInputLabel || undefined,
+        customInputValue: trimmedCustomInputValue || undefined,
+        customInputLabel: it?.customInputLabel || activeCustomInput?.label || undefined,
         amount: priceNumber,
         status,
         fulfillmentType,
@@ -390,15 +429,12 @@ const finalizePayment = async ({ paymentId, tranRef, queryResult }) => {
       });
 
       if (apiConfig?.type === 'api' && apiConfig?.serviceId && !deliveredCode) {
-        const quantity = parseQuantity(
-          it?.quantity ?? it?.selectedDenomination?.amount ?? it?.quantityLabel ?? 1
-        );
         apiDispatchQueue.push({
           orderId: order.id,
           serviceId: apiConfig.serviceId,
           providerName: apiConfig.providerName || 'KD1S',
           link: it?.customInputValue || it?.regionName || baseOrderData.productName,
-          quantity,
+          quantity: normalizedQuantity,
         });
       }
 
@@ -525,6 +561,20 @@ const createPaytabs = asyncHandler(async (req, res) => {
       throw new Error('Product not found');
     }
 
+    const regionId = normalizeId(p.regionId || p?.selectedRegion?.id);
+    const activeCustomInput = resolveCustomInputConfig(product, regionId);
+    const trimmedCustomInputValue =
+      p?.customInputValue && typeof p.customInputValue === 'string'
+        ? p.customInputValue.trim()
+        : p?.customInputValue;
+
+    if (activeCustomInput?.enabled && activeCustomInput?.required) {
+      if (!trimmedCustomInputValue) {
+        res.status(400);
+        throw new Error('الرجاء إدخال المعلومات المطلوبة لهذا المنتج');
+      }
+    }
+
     const denomKey = p.denominationId != null ? String(p.denominationId) : null;
     const trusted = computePrice(product, denomKey, p?.selectedDenomination, p?.amount ?? p?.price);
     const price = Number(trusted);
@@ -533,6 +583,10 @@ const createPaytabs = asyncHandler(async (req, res) => {
       throw new Error('Invalid product price');
     }
 
+    const normalizedQuantity = parseQuantity(
+      p?.quantity ?? p?.selectedDenomination?.amount ?? p?.quantityLabel ?? 1
+    );
+
     cartAmount = price;
     meta.orderPayload = {
       ...p,
@@ -540,6 +594,10 @@ const createPaytabs = asyncHandler(async (req, res) => {
       productName: p.productName || product.name,
       productCategory: p.productCategory || product.category,
       amount: price,
+      quantity: p?.quantity ?? normalizedQuantity,
+      quantityLabel: p?.quantityLabel || (p?.quantity ? String(normalizedQuantity) : undefined),
+      customInputValue: trimmedCustomInputValue,
+      customInputLabel: p?.customInputLabel || activeCustomInput?.label,
     };
   } else if (type === 'cart') {
     let items = [];
@@ -565,21 +623,32 @@ const createPaytabs = asyncHandler(async (req, res) => {
       }
     }
 
-    const mapped = items.map((i) => ({
-      productId: i.productId,
-      productName: i.name,
-      productCategory: i.category,
-      amount: Number(i.price || 0),
-      price: Number(i.price || 0),
-      fulfillmentType: i.apiConfig?.type || 'manual',
-      regionName: i.selectedRegion?.name,
-      regionId: i.selectedRegion?.id,
-      denominationId: i.selectedDenomination?.id,
-      quantityLabel: i.selectedDenomination?.label,
-      quantity: Number(i.quantity) || null,
-      customInputValue: i.customInputValue,
-      customInputLabel: i.customInputLabel,
-    }));
+    const mapped = items.map((i) => {
+      const normalizedQuantity = parseQuantity(
+        i?.quantity ?? i?.selectedDenomination?.amount ?? i?.quantityLabel ?? 1
+      );
+
+      const trimmedCustomInputValue =
+        i?.customInputValue && typeof i.customInputValue === 'string'
+          ? i.customInputValue.trim()
+          : i?.customInputValue;
+
+      return {
+        productId: i.productId,
+        productName: i.name,
+        productCategory: i.category,
+        amount: Number(i.price || 0),
+        price: Number(i.price || 0),
+        fulfillmentType: i.apiConfig?.type || 'manual',
+        regionName: i.selectedRegion?.name,
+        regionId: i.selectedRegion?.id,
+        denominationId: i.selectedDenomination?.id,
+        quantityLabel: i.selectedDenomination?.label || (i?.quantity ? String(normalizedQuantity) : undefined),
+        quantity: Number.isFinite(Number(i.quantity)) && Number(i.quantity) > 0 ? Number(i.quantity) : normalizedQuantity,
+        customInputValue: trimmedCustomInputValue,
+        customInputLabel: i.customInputLabel,
+      };
+    });
 
     cartAmount = mapped.reduce((s, x) => s + (Number(x.amount) || 0), 0);
     if (!Number.isFinite(cartAmount) || cartAmount <= 0) {
