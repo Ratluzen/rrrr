@@ -21,6 +21,13 @@ export const resolveQuantity = (
 
   const candidates = [
     denomination.amount,
+    // Some providers expose minimum order quantity separately
+    (denomination as any)?.minQuantity,
+    (denomination as any)?.min_quantity,
+    (denomination as any)?.minimum,
+    (denomination as any)?.min,
+    (denomination as any)?.qty,
+    (denomination as any)?.quantityMin,
     (denomination as any)?.quantity,
     (denomination as any)?.value,
     (denomination as any)?.denomination,

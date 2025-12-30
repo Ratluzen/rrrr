@@ -818,7 +818,10 @@ useEffect(() => {
     try {
       const res = await cartService.getMyCart();
       const items = Array.isArray(res?.data) ? (res.data as CartItem[]) : [];
-      setCartItems(items);
+      setCartItems(items.map(item => ({
+        ...item,
+        quantity: resolveQuantity(item.selectedDenomination, item.quantity),
+      })));
     } catch (error) {
       console.warn('Failed to refresh cart from API', error);
     }
