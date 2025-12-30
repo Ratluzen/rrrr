@@ -20,7 +20,7 @@ import { Capacitor } from '@capacitor/core';
 import { PushNotificationSchema, PushNotifications } from '@capacitor/push-notifications';
 import { extractOrdersFromResponse, normalizeOrderFromApi, normalizeOrdersFromApi } from './utils/orders';
 import { generateShortId } from './utils/id';
-import { extractNumericQuantity } from './utils/quantity';
+import { resolveQuantityFromSelection } from './utils/quantity';
 
 // ============================================================
 // ✅ Simple localStorage cache helpers (offline-first boot)
@@ -603,7 +603,7 @@ useEffect(() => {
       try {
         const res = await cartService.getMyCart();
         const items = Array.isArray(res?.data) ? (res.data as CartItem[]) : [];
-        setCartItems(items);
+        setCartItems(items.map(normalizeCartItemQuantity));
       } catch (error) {
         console.warn('Could not load cart from API', error);
         setCartItems([]);
@@ -672,6 +672,21 @@ useEffect(() => {
     } catch (error) {
       console.warn('Failed to refresh orders from API', error);
     }
+  };
+
+  const normalizeCartItemQuantity = (item: CartItem): CartItem => {
+    const quantityLabel = item.quantityLabel || item.selectedDenomination?.label;
+    const normalizedQuantity = resolveQuantityFromSelection(
+      quantityLabel,
+      item.selectedDenomination,
+      item.quantity || 1
+    );
+
+    return {
+      ...item,
+      quantity: normalizedQuantity,
+      quantityLabel,
+    };
   };
 
   // ====== Paged loading for "My Orders" view ======
@@ -814,7 +829,7 @@ useEffect(() => {
     try {
       const res = await cartService.getMyCart();
       const items = Array.isArray(res?.data) ? (res.data as CartItem[]) : [];
-      setCartItems(items);
+      setCartItems(items.map(normalizeCartItemQuantity));
     } catch (error) {
       console.warn('Failed to refresh cart from API', error);
     }
@@ -1236,9 +1251,10 @@ useEffect(() => {
           return;
       }
 
-      const resolvedQuantity = extractNumericQuantity(
+      const resolvedQuantity = resolveQuantityFromSelection(
         quantityLabel,
-        selectedDenominationObj?.amount || 1
+        selectedDenominationObj,
+        1
       );
 
       void (async () => {
@@ -1376,15 +1392,16 @@ useEffect(() => {
     }
 
     try {
-      const resolvedQuantity = extractNumericQuantity(
+      const resolvedQuantity = resolveQuantityFromSelection(
         item.selectedDenomination?.label,
-        item.quantity || item.selectedDenomination?.amount || 1
+        item.selectedDenomination,
+        item.quantity || 1
       );
 
       const payload = {
         productId: item.productId,
         quantity: resolvedQuantity,
-        quantityLabel: item.selectedDenomination?.label,
+        quantityLabel: item.quantityLabel || item.selectedDenomination?.label,
         // snapshots/options
         apiConfig: item.apiConfig,
         selectedRegion: item.selectedRegion,
@@ -1396,7 +1413,7 @@ useEffect(() => {
       };
 
       const res = await cartService.add(payload);
-      const created = res?.data as CartItem;
+      const created = normalizeCartItemQuantity(res?.data as CartItem);
       setCartItems(prev => [created, ...prev]);
       showActionToast('تمت الإضافة', 'تمت الإضافة إلى السلة بنجاح');
       return true;

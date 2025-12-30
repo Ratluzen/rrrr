@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Star, ShoppingCart, CheckCircle, ArrowLeft, CreditCard, Wallet, Calendar, User, Lock, Wifi, AlertTriangle } from 'lucide-react';
 import { Product, CartItem } from '../types';
 import { generateShortId } from '../utils/id';
-import { extractNumericQuantity } from '../utils/quantity';
+import { resolveQuantityFromSelection } from '../utils/quantity';
 
 interface Props {
   product: Product;
@@ -149,9 +149,10 @@ const ProductDetailsModal: React.FC<Props> = ({ product, isOpen, onClose, format
         return;
     }
 
-    const quantity = extractNumericQuantity(
+    const quantity = resolveQuantityFromSelection(
       denomObj?.label,
-      denomObj?.amount || 1
+      denomObj,
+      1
     );
 
     const newItem: CartItem = {
