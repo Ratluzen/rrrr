@@ -1481,10 +1481,9 @@ useEffect(() => {
 
       if (isBulkCheckout) {
           const payloads = cartItems.map(item => {
-            const quantity = resolveQuantityFromSelection(
+            const quantity = extractNumericQuantity(
               item.selectedDenomination?.label,
-              item.selectedDenomination,
-              item.quantity || 1
+              item.quantity || item.selectedDenomination?.amount || 1
             );
 
             return {
@@ -1544,10 +1543,11 @@ useEffect(() => {
             }
           })();
       } else if (activeCheckoutItem) {
-          const resolvedQuantity = resolveQuantityFromSelection(
+          const resolvedQuantity = extractNumericQuantity(
             activeCheckoutItem.selectedDenomination?.label,
-            activeCheckoutItem.selectedDenomination,
-            activeCheckoutItem.quantity || 1
+            activeCheckoutItem.quantity ||
+              activeCheckoutItem.selectedDenomination?.amount ||
+              1
           );
 
           const payload = {

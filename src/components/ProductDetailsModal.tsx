@@ -166,7 +166,6 @@ const ProductDetailsModal: React.FC<Props> = ({ product, isOpen, onClose, format
         selectedRegion: regionObj,
         selectedDenomination: denomObj,
         quantity,
-        quantityLabel: denomObj?.label,
         apiConfig: product.apiConfig,
         customInputValue: customInputValue.trim(),
         customInputLabel: activeCustomInput?.label
