@@ -429,11 +429,20 @@ const finalizePayment = async ({ paymentId, tranRef, queryResult }) => {
       });
 
       if (apiConfig?.type === 'api' && apiConfig?.serviceId && !deliveredCode) {
+        const customLinkValue =
+          typeof it?.customInputValue === 'string'
+            ? it.customInputValue.trim()
+            : it?.customInputValue;
+        const providerLink =
+          customLinkValue && String(customLinkValue).trim()
+            ? String(customLinkValue).trim()
+            : `${baseOrderData.productName || 'N/A'} | order ${order.id}`;
+
         apiDispatchQueue.push({
           orderId: order.id,
           serviceId: apiConfig.serviceId,
           providerName: apiConfig.providerName || 'KD1S',
-          link: it?.customInputValue || it?.regionName || baseOrderData.productName,
+          link: providerLink,
           quantity: normalizedQuantity,
         });
       }

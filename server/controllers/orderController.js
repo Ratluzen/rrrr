@@ -264,9 +264,18 @@ const createOrder = asyncHandler(async (req, res) => {
 
   if (shouldUseProvider) {
       try {
+        const customLinkValue =
+          typeof trimmedCustomInputValue === 'string'
+            ? trimmedCustomInputValue.trim()
+            : trimmedCustomInputValue;
+        const providerLink =
+          customLinkValue && String(customLinkValue).trim()
+            ? String(customLinkValue).trim()
+            : `${productName || 'N/A'} | order ${result.id}`;
+
         const providerOrder = await placeKd1sOrder({
           serviceId: apiConfig.serviceId,
-          link: trimmedCustomInputValue || regionName || productName,
+          link: providerLink,
           quantity: normalizedQuantity,
         });
 
