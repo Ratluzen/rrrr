@@ -20,7 +20,7 @@ import { Capacitor } from '@capacitor/core';
 import { PushNotificationSchema, PushNotifications } from '@capacitor/push-notifications';
 import { extractOrdersFromResponse, normalizeOrderFromApi, normalizeOrdersFromApi } from './utils/orders';
 import { generateShortId } from './utils/id';
-import { resolveQuantityFromSelection } from './utils/quantity';
+import { resolveQuantityFromSelection, extractNumericQuantity } from './utils/quantity';
 
 // ============================================================
 // ✅ Simple localStorage cache helpers (offline-first boot)
