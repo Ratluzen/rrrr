@@ -1466,7 +1466,11 @@ useEffect(() => {
             regionId: item.selectedRegion?.id,
             denominationId: item.selectedDenomination?.id,
             quantityLabel: item.selectedDenomination?.label,
-            quantity: item.quantity || item.selectedDenomination?.amount || 1,
+            quantity:
+              item.quantity ||
+              getQuantityFromDenomination(item.selectedDenomination) ||
+              item.selectedDenomination?.amount ||
+              1,
             customInputValue: item.customInputValue,
             customInputLabel: item.customInputLabel,
             paymentMethod: method,
