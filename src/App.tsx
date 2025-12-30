@@ -1224,6 +1224,7 @@ useEffect(() => {
       productId?: string,
       regionId?: string,
       denominationId?: string,
+      quantity?: number,
       customInputValue?: string,
       customInputLabel?: string,
       paymentMethod: 'wallet' | 'card' = 'wallet',
@@ -1247,6 +1248,7 @@ useEffect(() => {
           regionName,
           regionId,
           denominationId,
+          quantity,
           selectedRegion: selectedRegionObj,
           selectedDenomination: selectedDenominationObj,
           quantityLabel,
@@ -1362,16 +1364,33 @@ useEffect(() => {
   };
 
   // --- Cart Logic ---
-  const resolveCartQuantity = (item: CartItem): number => {
-    const rawQuantity = item.quantity ?? item.selectedDenomination?.amount;
-    const rawFallback =
-      item.selectedDenomination?.amount ??
-      (item.selectedDenomination as any)?.value ??
-      (item.selectedDenomination as any)?.denomination;
+  const parseCartQuantityValue = (val: any): number | null => {
+    if (val === undefined || val === null) return null;
+    if (typeof val === 'number') return val;
+    const parsed = Number(String(val).replace(/[^0-9.]/g, ''));
+    return Number.isFinite(parsed) ? parsed : null;
+  };
 
-    const num = Number(rawQuantity ?? rawFallback);
-    if (!Number.isFinite(num) || num <= 0) return 1;
-    return Math.max(1, Math.round(num));
+  const resolveCartQuantity = (item: CartItem): number => {
+    const candidates = [
+      item.quantity,
+      (item.selectedDenomination as any)?.quantity,
+      (item.selectedDenomination as any)?.minQuantity,
+      (item.selectedDenomination as any)?.minimum,
+      (item.selectedDenomination as any)?.value,
+      (item.selectedDenomination as any)?.amount,
+      (item.selectedDenomination as any)?.denomination,
+      item.selectedDenomination?.label,
+    ];
+
+    for (const candidate of candidates) {
+      const parsed = parseCartQuantityValue(candidate);
+      if (parsed && parsed > 0) {
+        return Math.max(1, Math.round(parsed));
+      }
+    }
+
+    return 1;
   };
 
   const addToCart = async (item: CartItem): Promise<boolean> => {
@@ -1472,7 +1491,7 @@ useEffect(() => {
             regionName: item.selectedRegion?.name,
             regionId: item.selectedRegion?.id,
             denominationId: item.selectedDenomination?.id,
-            quantityLabel: item.selectedDenomination?.label,
+            quantityLabel: item.selectedDenomination?.label || String(resolveCartQuantity(item)),
             quantity: resolveCartQuantity(item),
             customInputValue: item.customInputValue,
             customInputLabel: item.customInputLabel,
@@ -1528,7 +1547,9 @@ useEffect(() => {
             regionName: activeCheckoutItem.selectedRegion?.name,
             regionId: activeCheckoutItem.selectedRegion?.id,
             denominationId: activeCheckoutItem.selectedDenomination?.id,
-            quantityLabel: activeCheckoutItem.selectedDenomination?.label,
+            quantityLabel:
+              activeCheckoutItem.selectedDenomination?.label ||
+              String(resolveCartQuantity(activeCheckoutItem)),
             quantity: resolveCartQuantity(activeCheckoutItem),
             customInputValue: activeCheckoutItem.customInputValue,
             customInputLabel: activeCheckoutItem.customInputLabel,

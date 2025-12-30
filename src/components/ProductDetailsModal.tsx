@@ -20,6 +20,7 @@ interface Props {
     productId?: string,
     regionId?: string,
     denominationId?: string,
+    quantity?: number,
     customInputValue?: string,
     customInputLabel?: string,
     paymentMethod?: 'wallet' | 'card',
@@ -124,6 +125,34 @@ const ProductDetailsModal: React.FC<Props> = ({ product, isOpen, onClose, format
     ? currentPriceRaw
     : Number(product.price);
 
+  const normalizedQuantity = (() => {
+    const parseQuantity = (val: any): number | null => {
+      if (val === undefined || val === null) return null;
+      if (typeof val === 'number') return val;
+      const parsed = Number(String(val).replace(/[^0-9.]/g, ''));
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    const candidates = [
+      denomObj?.amount,
+      (denomObj as any)?.quantity,
+      (denomObj as any)?.minQuantity,
+      (denomObj as any)?.minimum,
+      (denomObj as any)?.value,
+      (denomObj as any)?.denomination,
+      denomObj?.label,
+    ];
+
+    for (const candidate of candidates) {
+      const parsed = parseQuantity(candidate);
+      if (parsed && parsed > 0) {
+        return Math.max(1, Math.round(parsed));
+      }
+    }
+
+    return 1;
+  })();
+
   const handleAddToCart = async () => {
     // Availability Check
     if (!isAvailableGlobally) {
@@ -147,15 +176,6 @@ const ProductDetailsModal: React.FC<Props> = ({ product, isOpen, onClose, format
         alert(`يرجى إدخال ${activeCustomInput.label || 'المعلومات المطلوبة'}`);
         return;
     }
-
-    const normalizedQuantity = (() => {
-      const raw = denomObj?.amount;
-      const num = raw != null ? Number(raw) : null;
-      if (num && Number.isFinite(num) && num > 0) {
-        return Math.max(1, Math.round(num));
-      }
-      return 1;
-    })();
 
     const newItem: CartItem = {
         id: generateShortId(),
@@ -223,6 +243,7 @@ const ProductDetailsModal: React.FC<Props> = ({ product, isOpen, onClose, format
                     product.id,
                     selectedRegion,
                     selectedDenomId,
+                    normalizedQuantity,
                     customInputValue.trim(),
                     activeCustomInput?.label, // Use active label
                     'wallet',
@@ -249,6 +270,7 @@ const ProductDetailsModal: React.FC<Props> = ({ product, isOpen, onClose, format
                   product.id,
                   selectedRegion,
                   selectedDenomId,
+                  normalizedQuantity,
                   customInputValue.trim(),
                   activeCustomInput?.label,
                   'card',
@@ -578,6 +600,7 @@ onClose();
                         product.id,
                         selectedRegion,
                         selectedDenomId,
+                        normalizedQuantity,
                     customInputValue.trim(),
                     activeCustomInput?.label, // Use active label (Region or Global)
                     'card' // Method is Card
