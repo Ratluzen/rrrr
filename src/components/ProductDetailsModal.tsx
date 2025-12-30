@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Star, ShoppingCart, CheckCircle, ArrowLeft, CreditCard, Wallet, Calendar, User, Lock, Wifi, AlertTriangle } from 'lucide-react';
 import { Product, CartItem } from '../types';
 import { generateShortId } from '../utils/id';
+import { resolveQuantityFromSelection } from '../utils/quantity';
 
 interface Props {
   product: Product;
@@ -148,6 +149,12 @@ const ProductDetailsModal: React.FC<Props> = ({ product, isOpen, onClose, format
         return;
     }
 
+    const quantity = resolveQuantityFromSelection(
+      denomObj?.label,
+      denomObj,
+      1
+    );
+
     const newItem: CartItem = {
         id: generateShortId(),
         productId: product.id,
@@ -158,7 +165,8 @@ const ProductDetailsModal: React.FC<Props> = ({ product, isOpen, onClose, format
         imageColor: product.imageColor,
         selectedRegion: regionObj,
         selectedDenomination: denomObj,
-        quantity: 1,
+        quantity,
+        quantityLabel: denomObj?.label,
         apiConfig: product.apiConfig,
         customInputValue: customInputValue.trim(),
         customInputLabel: activeCustomInput?.label

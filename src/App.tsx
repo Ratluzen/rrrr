@@ -20,6 +20,7 @@ import { Capacitor } from '@capacitor/core';
 import { PushNotificationSchema, PushNotifications } from '@capacitor/push-notifications';
 import { extractOrdersFromResponse, normalizeOrderFromApi, normalizeOrdersFromApi } from './utils/orders';
 import { generateShortId } from './utils/id';
+import { resolveQuantityFromSelection } from './utils/quantity';
 
 // ============================================================
 // ✅ Simple localStorage cache helpers (offline-first boot)
@@ -602,7 +603,7 @@ useEffect(() => {
       try {
         const res = await cartService.getMyCart();
         const items = Array.isArray(res?.data) ? (res.data as CartItem[]) : [];
-        setCartItems(items);
+        setCartItems(items.map(normalizeCartItemQuantity));
       } catch (error) {
         console.warn('Could not load cart from API', error);
         setCartItems([]);
@@ -671,6 +672,21 @@ useEffect(() => {
     } catch (error) {
       console.warn('Failed to refresh orders from API', error);
     }
+  };
+
+  const normalizeCartItemQuantity = (item: CartItem): CartItem => {
+    const quantityLabel = item.quantityLabel || item.selectedDenomination?.label;
+    const normalizedQuantity = resolveQuantityFromSelection(
+      quantityLabel,
+      item.selectedDenomination,
+      item.quantity || 1
+    );
+
+    return {
+      ...item,
+      quantity: normalizedQuantity,
+      quantityLabel,
+    };
   };
 
   // ====== Paged loading for "My Orders" view ======
@@ -813,7 +829,7 @@ useEffect(() => {
     try {
       const res = await cartService.getMyCart();
       const items = Array.isArray(res?.data) ? (res.data as CartItem[]) : [];
-      setCartItems(items);
+      setCartItems(items.map(normalizeCartItemQuantity));
     } catch (error) {
       console.warn('Failed to refresh cart from API', error);
     }
@@ -1235,6 +1251,12 @@ useEffect(() => {
           return;
       }
 
+      const resolvedQuantity = resolveQuantityFromSelection(
+        quantityLabel,
+        selectedDenominationObj,
+        1
+      );
+
       void (async () => {
         const payload = {
           productId,
@@ -1250,6 +1272,7 @@ useEffect(() => {
           selectedRegion: selectedRegionObj,
           selectedDenomination: selectedDenominationObj,
           quantityLabel,
+          quantity: resolvedQuantity,
           customInputValue,
           customInputLabel,
           paymentMethod,
@@ -1369,9 +1392,16 @@ useEffect(() => {
     }
 
     try {
+      const resolvedQuantity = resolveQuantityFromSelection(
+        item.selectedDenomination?.label,
+        item.selectedDenomination,
+        item.quantity || 1
+      );
+
       const payload = {
         productId: item.productId,
-        quantity: item.quantity || 1,
+        quantity: resolvedQuantity,
+        quantityLabel: item.quantityLabel || item.selectedDenomination?.label,
         // snapshots/options
         apiConfig: item.apiConfig,
         selectedRegion: item.selectedRegion,
@@ -1383,7 +1413,7 @@ useEffect(() => {
       };
 
       const res = await cartService.add(payload);
-      const created = res?.data as CartItem;
+      const created = normalizeCartItemQuantity(res?.data as CartItem);
       setCartItems(prev => [created, ...prev]);
       showActionToast('تمت الإضافة', 'تمت الإضافة إلى السلة بنجاح');
       return true;
@@ -1450,22 +1480,30 @@ useEffect(() => {
       }
 
       if (isBulkCheckout) {
-          const payloads = cartItems.map(item => ({
-            productId: item.productId,
-            productName: item.name,
-            productCategory: item.category,
-            amount: item.price,
-            price: item.price,
-            fulfillmentType: item.apiConfig?.type || 'manual',
-            regionName: item.selectedRegion?.name,
-            regionId: item.selectedRegion?.id,
-            denominationId: item.selectedDenomination?.id,
-            quantityLabel: item.selectedDenomination?.label,
-            quantity: item.quantity || item.selectedDenomination?.amount || 1,
-            customInputValue: item.customInputValue,
-            customInputLabel: item.customInputLabel,
-            paymentMethod: method,
-          }));
+          const payloads = cartItems.map(item => {
+            const quantity = resolveQuantityFromSelection(
+              item.selectedDenomination?.label,
+              item.selectedDenomination,
+              item.quantity || 1
+            );
+
+            return {
+              productId: item.productId,
+              productName: item.name,
+              productCategory: item.category,
+              amount: item.price,
+              price: item.price,
+              fulfillmentType: item.apiConfig?.type || 'manual',
+              regionName: item.selectedRegion?.name,
+              regionId: item.selectedRegion?.id,
+              denominationId: item.selectedDenomination?.id,
+              quantityLabel: item.selectedDenomination?.label,
+              quantity,
+              customInputValue: item.customInputValue,
+              customInputLabel: item.customInputLabel,
+              paymentMethod: method,
+            };
+          });
 
           const snapshot = [...cartItems];
           setCartItems([]);
@@ -1506,6 +1544,12 @@ useEffect(() => {
             }
           })();
       } else if (activeCheckoutItem) {
+          const resolvedQuantity = resolveQuantityFromSelection(
+            activeCheckoutItem.selectedDenomination?.label,
+            activeCheckoutItem.selectedDenomination,
+            activeCheckoutItem.quantity || 1
+          );
+
           const payload = {
             productId: activeCheckoutItem.productId,
             productName: activeCheckoutItem.name,
@@ -1513,14 +1557,11 @@ useEffect(() => {
             amount: activeCheckoutItem.price,
             price: activeCheckoutItem.price,
             fulfillmentType: activeCheckoutItem.apiConfig?.type || 'manual',
-          regionName: activeCheckoutItem.selectedRegion?.name,
-          regionId: activeCheckoutItem.selectedRegion?.id,
-          denominationId: activeCheckoutItem.selectedDenomination?.id,
-          quantityLabel: activeCheckoutItem.selectedDenomination?.label,
-          quantity:
-            activeCheckoutItem.quantity ||
-            activeCheckoutItem.selectedDenomination?.amount ||
-            1,
+            regionName: activeCheckoutItem.selectedRegion?.name,
+            regionId: activeCheckoutItem.selectedRegion?.id,
+            denominationId: activeCheckoutItem.selectedDenomination?.id,
+            quantityLabel: activeCheckoutItem.selectedDenomination?.label,
+          quantity: resolvedQuantity,
           customInputValue: activeCheckoutItem.customInputValue,
           customInputLabel: activeCheckoutItem.customInputLabel,
           paymentMethod: method,

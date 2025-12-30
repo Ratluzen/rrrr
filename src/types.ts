@@ -72,6 +72,7 @@ export interface CartItem {
   selectedRegion?: Region;
   selectedDenomination?: Denomination;
   quantity: number;
+  quantityLabel?: string;
   apiConfig?: ApiConfig;
   customInputValue?: string; // NEW: Value entered by user
   customInputLabel?: string; // NEW: Label of the input field
