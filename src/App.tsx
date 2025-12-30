@@ -1363,8 +1363,13 @@ useEffect(() => {
 
   // --- Cart Logic ---
   const resolveCartQuantity = (item: CartItem): number => {
-    const raw = item.selectedDenomination?.amount ?? item.quantity;
-    const num = Number(raw);
+    const rawQuantity = item.quantity ?? item.selectedDenomination?.amount;
+    const rawFallback =
+      item.selectedDenomination?.amount ??
+      (item.selectedDenomination as any)?.value ??
+      (item.selectedDenomination as any)?.denomination;
+
+    const num = Number(rawQuantity ?? rawFallback);
     if (!Number.isFinite(num) || num <= 0) return 1;
     return Math.max(1, Math.round(num));
   };
