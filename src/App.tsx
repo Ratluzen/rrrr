@@ -1384,6 +1384,7 @@ useEffect(() => {
       const payload = {
         productId: item.productId,
         quantity: resolvedQuantity,
+        quantityLabel: item.selectedDenomination?.label,
         // snapshots/options
         apiConfig: item.apiConfig,
         selectedRegion: item.selectedRegion,
