@@ -1597,10 +1597,14 @@ useEffect(() => {
 
           void (async () => {
             const notifyPromises: Promise<unknown>[] = [];
-            const results = await Promise.all(payloads.map(payload => createOrderOnServer(payload)));
-
+            const results: { ok: boolean; order?: any; message?: string }[] = [];
             const failedItems: CartItem[] = [];
-            results.forEach((result, idx) => {
+
+            // ✅ PROFESSIONAL FIX: Process orders sequentially to avoid browser/server rate limits
+            for (let i = 0; i < payloads.length; i++) {
+              const result = await createOrderOnServer(payloads[i]);
+              results.push(result);
+
               if (result.ok && result.order) {
                 notifyPromises.push(
                   pushService
@@ -1608,9 +1612,14 @@ useEffect(() => {
                     .catch(notifyErr => console.warn('Failed to notify admin about bulk order item', notifyErr))
                 );
               } else {
-                failedItems.push(snapshot[idx]);
+                failedItems.push(snapshot[i]);
               }
-            });
+
+              // Small delay between requests to ensure DB stability and provider compliance
+              if (i < payloads.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 300));
+              }
+            }
 
             if (notifyPromises.length) void Promise.allSettled(notifyPromises);
 
