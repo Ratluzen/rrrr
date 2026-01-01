@@ -1,5 +1,9 @@
 name: Create Release and Build APK
 
+permissions:
+  contents: write
+  pull-requests: write
+
 on:
   push:
     tags:
@@ -36,12 +40,10 @@ jobs:
 
       - name: إنشاء Release على GitHub
         id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.get_version.outputs.version }}
-          release_name: الإصدار ${{ steps.get_version.outputs.version }}
+          name: الإصدار ${{ steps.get_version.outputs.version }}
           body: |
             ## 🎉 الإصدار ${{ steps.get_version.outputs.version }}
             
@@ -122,14 +124,10 @@ jobs:
           # يمكنك إضافة خطوات التوقيع هنا لاحقاً
 
       - name: Upload APK to Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: android/app/build/outputs/apk/release/app-release-unsigned.apk
-          asset_name: Ratelozn-v${{ needs.create-release.outputs.version }}.apk
-          asset_content_type: application/vnd.android.package-archive
+          tag_name: v${{ needs.create-release.outputs.version }}
+          files: android/app/build/outputs/apk/release/app-release-unsigned.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
