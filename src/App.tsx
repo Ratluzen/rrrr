@@ -641,7 +641,7 @@ useEffect(() => {
     if (!hasToken) return;
 
     const nextSkip = mode === 'append' ? transactions.length : 0;
-    const pageSize = 10;
+    const pageSize = 100;
 
     if (mode === 'append' && (transactionsLoadingMore || !transactionsHasMore)) return;
 
@@ -836,7 +836,7 @@ useEffect(() => {
     if (!hasToken) return;
     
     const nextSkip = mode === 'append' ? cartItems.length : 0;
-    const pageSize = 10;
+    const pageSize = 100;
 
     console.log('🛍️ Cart Pagination:', { mode, nextSkip, pageSize, currentItems: cartItems.length, hasMore: cartHasMore });
 
@@ -865,7 +865,7 @@ useEffect(() => {
       }
 
       // If we got exactly 10 items, assume there might be more on the server
-      const hasMore = res.data?.hasMore ?? (items.length === 10);
+      const hasMore = res.data?.hasMore ?? (items.length === 100);
       console.log('✅ Processed:', { items: items.length, hasMore, totalAfter: mode === 'replace' ? items.length : cartItems.length + items.length });
 
       if (mode === 'replace') {
@@ -911,7 +911,7 @@ useEffect(() => {
 
   const refreshAnnouncementsFromServer = async (mode: 'replace' | 'append' = 'replace') => {
     const nextSkip = mode === 'append' ? announcements.length : 0;
-    const pageSize = 10;
+    const pageSize = 100;
 
     if (mode === 'append' && (announcementsLoadingMore || !announcementsHasMore)) return;
     if (mode === 'append') setAnnouncementsLoadingMore(true);
