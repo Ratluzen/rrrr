@@ -304,6 +304,7 @@ const Home: React.FC<Props> = ({
                       <img
                         src={banner.imageUrl}
                         alt={banner.title}
+                        loading="lazy"
                         className="absolute inset-0 w-full h-full object-cover"
                         referrerPolicy="no-referrer"
                       />

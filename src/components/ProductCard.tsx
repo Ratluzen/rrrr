@@ -27,6 +27,8 @@ const ProductCard: React.FC<Props> = ({ product, onClick }) => {
             <img 
               src={product.imageUrl} 
               alt={product.name} 
+              loading="lazy"
+              referrerPolicy="no-referrer"
               className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" 
             />
          ) : (
