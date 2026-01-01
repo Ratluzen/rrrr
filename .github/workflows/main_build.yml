@@ -77,6 +77,10 @@ jobs:
       - name: Build Web Assets
         run: VITE_API_URL="https://rrrr-production-f1ca.up.railway.app/api" npm run build
 
+      - name: ضغط ملفات الويب (Web Build)
+        run: |
+          zip -r web-build-v${{ steps.vars.outputs.version }}.zip dist/
+
       - name: Initialize Android Platform
         run: npx cap add android
 
@@ -142,6 +146,7 @@ jobs:
           files: |
             ${{ steps.sign_apk.outputs.signedReleaseFile }}
             ${{ steps.sign_aab.outputs.signedReleaseFile }}
+            web-build-v${{ steps.vars.outputs.version }}.zip
           body: |
             ## 🎉 الإصدار ${{ steps.vars.outputs.version }}
             تم بناء وتوقيع الملفات تلقائياً.
@@ -149,6 +154,7 @@ jobs:
             ### 📁 الملفات المرفقة:
             1. **APK**: للتثبيت المباشر على الهواتف.
             2. **AAB**: للرفع على متجر جوجل بلاي (Google Play Store).
+            3. **Web Build**: ملفات الويب جاهزة للنشر على أي استضافة.
           draft: false
           prerelease: false
 
@@ -159,4 +165,5 @@ jobs:
           path: |
             ${{ steps.sign_apk.outputs.signedReleaseFile }}
             ${{ steps.sign_aab.outputs.signedReleaseFile }}
+            web-build-v${{ steps.vars.outputs.version }}.zip
           retention-days: 14
