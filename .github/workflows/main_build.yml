@@ -31,22 +31,18 @@ jobs:
       - name: تحديد رقم الإصدار ونوع العملية
         id: vars
         run: |
-          # تحديد ما إذا كان هذا حدث Release رسمي (عبر Tag أو Dispatch)
           IS_TAG_EVENT=false
           if [[ "${{ github.ref }}" == refs/tags/* ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.version }}" != "" ]]; then
             IS_TAG_EVENT=true
           fi
           echo "is_tag_event=$IS_TAG_EVENT" >> $GITHUB_OUTPUT
           
-          # تحديد رقم الإصدار
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.version }}" != "" ]]; then
             VERSION="${{ github.event.inputs.version }}"
           elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            # إزالة حرف v من البداية إن وُجد
             TAG_NAME=${GITHUB_REF#refs/tags/}
             VERSION=${TAG_NAME#v}
           else
-            # جلب أحدث Release من GitHub لاستخدامه كمرجع
             LATEST_RELEASE=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || echo "")
             if [ -n "$LATEST_RELEASE" ]; then
               VERSION=${LATEST_RELEASE#v}
@@ -104,16 +100,18 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Build APK (Always Release)
+      - name: Build APK & AAB (Always Release)
         run: |
           cd android
           chmod +x gradlew
-          echo "🏗️ بناء نسخة الإنتاج الرسمية (Release APK)..."
+          echo "🏗️ بناء ملف APK (للتثبيت المباشر)..."
           ./gradlew assembleRelease
+          echo "🏗️ بناء ملف AAB (لمتجر جوجل بلاي)..."
+          ./gradlew bundleRelease
 
-      - name: توقيع APK تلقائياً (Sign APK)
+      - name: توقيع ملف APK
         uses: r0adkll/sign-android-release@v1
-        id: sign_app
+        id: sign_apk
         with:
           releaseDirectory: android/app/build/outputs/apk/release
           signingKeyBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -121,24 +119,44 @@ jobs:
           keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
         env:
-          BUILD_TOOLS_VERSION: "34.0.0" # تحديد نسخة أحدث من أدوات البناء متوفرة في GitHub Runner
+          BUILD_TOOLS_VERSION: "34.0.0"
 
-      - name: إنشاء Release ورفع الملف (فقط عند وجود Tag أو طلب يدوي)
+      - name: توقيع ملف AAB (لمتجر بلاي)
+        uses: r0adkll/sign-android-release@v1
+        id: sign_aab
+        with:
+          releaseDirectory: android/app/build/outputs/bundle/release
+          signingKeyBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: "34.0.0"
+
+      - name: إنشاء Release ورفع الملفات
         if: steps.vars.outputs.is_tag_event == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.vars.outputs.version }}
           name: الإصدار ${{ steps.vars.outputs.version }}
-          files: ${{ steps.sign_app.outputs.signedReleaseFile }}
+          files: |
+            ${{ steps.sign_apk.outputs.signedReleaseFile }}
+            ${{ steps.sign_aab.outputs.signedReleaseFile }}
           body: |
             ## 🎉 الإصدار ${{ steps.vars.outputs.version }}
-            تم بناء وتوقيع هذا الإصدار تلقائياً.
+            تم بناء وتوقيع الملفات تلقائياً.
+            
+            ### 📁 الملفات المرفقة:
+            1. **APK**: للتثبيت المباشر على الهواتف.
+            2. **AAB**: للرفع على متجر جوجل بلاي (Google Play Store).
           draft: false
           prerelease: false
 
-      - name: رفع الملف كـ Artifact (متاح دائماً للتحميل)
+      - name: رفع الملفات كـ Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Ratelozn-App-v${{ steps.vars.outputs.version }}
-          path: ${{ steps.sign_app.outputs.signedReleaseFile }}
+          path: |
+            ${{ steps.sign_apk.outputs.signedReleaseFile }}
+            ${{ steps.sign_aab.outputs.signedReleaseFile }}
           retention-days: 14
