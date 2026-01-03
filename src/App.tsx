@@ -2296,7 +2296,7 @@ useEffect(() => {
 
         {/* Global Ban Overlay */}
         {isUserBanned && (
-          <div className="fixed inset-0 z-[100] bg-[#13141f]/80 backdrop-blur-md flex flex-col items-center justify-center px-8 text-center animate-fadeIn">
+          <div className="fixed inset-0 z-[100] bg-[#13141f] flex flex-col items-center justify-center px-8 text-center animate-fadeIn">
             <div className="w-24 h-24 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20">
               <ShieldAlert size={48} className="text-red-500" />
             </div>
