@@ -447,131 +447,78 @@ useEffect(() => {
   // --- Initial Data Load from API ---
   useEffect(() => {
     const fetchInitialData = async () => {
-      // Products
-      try {
-        const res = await productService.getAll();
-        if (res && res.data) {
-          setProducts(res.data);
-        }
-      } catch (error) {
-        console.error('Failed to load products from API, using local initial products instead', error);
-      }
-
-      // Banners
-      try {
-        const res = await contentService.getBanners();
-        if (res && res.data) {
-          setBanners(res.data);
-        }
-      } catch (error) {
-        console.error('Failed to load banners from API, using local initial banners instead', error);
-      }
-
-      // Categories
-      try {
-        const res = await contentService.getCategories();
-        if (res && res.data) {
-          setCategories(res.data.map((c: any) => ({
-            ...c,
-            icon: typeof c.icon === 'string'
-              ? (CATEGORY_ICON_MAP[c.icon.toLowerCase()] || Tags)
-              : c.icon,
-          })));
-        }
-      } catch (error) {
-        console.error('Failed to load categories from API, using local initial categories instead', error);
-      }
-
-      // Announcements (Paged 10)
-      try {
-        const res = await contentService.getAnnouncementsPaged(0, 10);
-        const data: any = res?.data;
-        const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
-        const hasMore = typeof data?.hasMore === 'boolean' ? data.hasMore : (items.length === 10);
-        setAnnouncements(items);
-        setAnnouncementsHasMore(hasMore);
-      } catch (error) {
-        console.error('Failed to load announcements from API', error);
-      }
-
-
-      // Terms (Terms & Conditions)
-      try {
-        const res = await contentService.getTerms();
-        if (res && res.data) {
-          const data: any = res.data;
-          setTerms((prev) => ({
-            ...prev,
-            contentAr: typeof data.contentAr === 'string' ? data.contentAr : prev.contentAr,
-            contentEn: typeof data.contentEn === 'string' ? data.contentEn : prev.contentEn,
-          }));
-        }
-      } catch (error) {
-        console.error('Failed to load terms from API, using local initial terms instead', error);
-      }
-
-      // Wallet Transactions (Paged 10)
-      try {
-        const res = await walletService.getTransactionsPaged(0, 10);
-        const rawData = res.data;
-        const items = normalizeTransactionsFromApi(Array.isArray(rawData) ? rawData : (rawData?.items || []));
-        const hasMore = rawData?.hasMore ?? (items.length === 10);
-        setTransactions(items);
-        setTransactionsHasMore(hasMore);
-      } catch (error) {
-        console.warn('Could not load wallet transactions from API (maybe user not logged in)', error);
-      }
-
-      // Orders (Paged 10)
-      try {
-        if (isAdminLoggedIn) {
-          const res = await orderService.getAllPaged(0, 10);
-          if (res && res.data) {
-            const { items } = extractOrdersFromResponse(res.data);
-            setOrders(items);
+      // ✅ Parallelize requests to speed up boot and prevent blocking on failure
+      const publicTasks = [
+        productService.getAll().then(res => res?.data && setProducts(res.data)).catch(() => {}),
+        contentService.getBanners().then(res => res?.data && setBanners(res.data)).catch(() => {}),
+        contentService.getCategories().then(res => {
+          if (res?.data) {
+            setCategories(res.data.map((c: any) => ({
+              ...c,
+              icon: typeof c.icon === 'string' ? (CATEGORY_ICON_MAP[c.icon.toLowerCase()] || Tags) : c.icon,
+            })));
           }
-        } else {
-          const res = await orderService.getMyOrdersPaged(0, 10);
+        }).catch(() => {}),
+        contentService.getAnnouncementsPaged(0, 10).then(res => {
           const data: any = res?.data;
           const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
-          const hasMore = typeof data?.hasMore === 'boolean' ? data.hasMore : (items.length === 10);
-          const normalized = normalizeOrdersFromApi(items);
-          setOrders(normalized);
-          setMyOrdersPage(normalized);
-          setMyOrdersHasMore(hasMore);
-          setMyOrdersSkip(items.length);
-        }
-      } catch (error) {
-        console.warn('Could not load orders from API (maybe user not logged in)', error);
+          setAnnouncements(items);
+          setAnnouncementsHasMore(typeof data?.hasMore === 'boolean' ? data.hasMore : (items.length === 10));
+        }).catch(() => {}),
+        contentService.getTerms().then(res => {
+          if (res?.data) {
+            const data: any = res.data;
+            setTerms(prev => ({
+              ...prev,
+              contentAr: typeof data.contentAr === 'string' ? data.contentAr : prev.contentAr,
+              contentEn: typeof data.contentEn === 'string' ? data.contentEn : prev.contentEn,
+            }));
+          }
+        }).catch(() => {}),
+      ];
+
+      const userTasks = [];
+      if (hasToken) {
+        userTasks.push(
+          walletService.getTransactionsPaged(0, 10).then(res => {
+            const rawData = res.data;
+            const items = normalizeTransactionsFromApi(Array.isArray(rawData) ? rawData : (rawData?.items || []));
+            setTransactions(items);
+            setTransactionsHasMore(rawData?.hasMore ?? (items.length === 10));
+          }).catch(() => {}),
+          (isAdminLoggedIn 
+            ? orderService.getAllPaged(0, 10).then(res => {
+                if (res?.data) {
+                  const { items } = extractOrdersFromResponse(res.data);
+                  setOrders(items);
+                }
+              })
+            : orderService.getMyOrdersPaged(0, 10).then(res => {
+                const data: any = res?.data;
+                const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
+                const normalized = normalizeOrdersFromApi(items);
+                setOrders(normalized);
+                setMyOrdersPage(normalized);
+                setMyOrdersHasMore(typeof data?.hasMore === 'boolean' ? data.hasMore : (items.length === 10));
+                setMyOrdersSkip(items.length);
+              })
+          ).catch(() => {})
+        );
       }
 
-      // Users (Admin)
+      const adminTasks = [];
       if (isAdminLoggedIn) {
-        try {
-            const res = await userService.getAll();
-            if (res && res.data) {
-            setUsers(res.data);
-            }
-        } catch (error) {
-            console.warn('Could not load users from API (admin only endpoint)', error);
-        }
+        adminTasks.push(
+          userService.getAll().then(res => res?.data && setUsers(res.data)).catch(() => {}),
+          inventoryService.getAll().then(res => res?.data && setInventory(res.data)).catch(() => {})
+        );
       }
 
-      // Inventory (Admin)
-      if (isAdminLoggedIn) {
-        try {
-            const res = await inventoryService.getAll();
-            if (res && res.data) {
-            setInventory(res.data);
-            }
-        } catch (error) {
-            console.warn('Could not load inventory from API (admin only endpoint)', error);
-        }
-      }
+      await Promise.all([...publicTasks, ...userTasks, ...adminTasks]);
     };
 
     fetchInitialData();
-  }, [isAdminLoggedIn]); // Added isAdminLoggedIn as dependency to refetch correct data on login/init
+  }, [isAdminLoggedIn, hasToken]);
 
   // ============================================================
   // ✅ Persist caches (so app opens instantly next time)
