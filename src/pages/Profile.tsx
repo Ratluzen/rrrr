@@ -448,7 +448,7 @@ const Profile: React.FC<Props> = ({ setView, currentCurrency, onCurrencyChange, 
                         <LogOut size={32} className="text-red-500" />
                     </div>
                     <h3 className="text-xl font-bold text-white mb-2">تسجيل الخروج</h3>
-                    <p className="text-gray-400 text-sm mb-6">هل أنت متأكد أنك تريد تسجيل الخروج من التطبيق؟</p>
+                    <p className="text-gray-400 text-sm mb-6">هل أنت متأكد أنك تريد تسجيل الخروج من حسابك؟</p>
                     <div className="flex gap-3">
                         <button onClick={() => setShowLogoutModal(false)} className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-xl font-bold transition-colors">إلغاء</button>
                         <button onClick={() => { setShowLogoutModal(false); onLogout(); }} className="flex-1 bg-red-600 hover:bg-red-500 text-white py-3 rounded-xl font-bold transition-colors">خروج</button>
