@@ -39,7 +39,7 @@ const protect = asyncHandler(async (req, res, next) => {
       next();
     } catch (error) {
       // If it's the ban error, re-throw it to be handled by the main Express error handler
-      if ((error as any).isBanError) {
+      if (error.isBanError) {
         throw error;
       }
       
@@ -47,7 +47,6 @@ const protect = asyncHandler(async (req, res, next) => {
       console.error(error);
       res.status(401);
       throw new Error('غير مصرح لك، الرمز غير صالح');
-    }
     }
   }
 
