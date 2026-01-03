@@ -318,8 +318,8 @@ const Profile: React.FC<Props> = ({ setView, currentCurrency, onCurrencyChange, 
       </div>
 
        {/* Version */}
-       <div className="text-center text-gray-600 text-[10px] mt-8 mb-4 font-mono tracking-widest opacity-60">
-         v{versionData.version}
+       <div className="text-center text-gray-400 text-[12px] mt-8 mb-6 font-medium tracking-wider opacity-80">
+         إصدار التطبيق: v{versionData.version}
        </div>
 
        {/* --- MODALS --- */}
