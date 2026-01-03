@@ -35,10 +35,10 @@ const ExitConfirmModal: React.FC<Props> = ({ isOpen, onClose, onConfirm }) => {
 
           {/* Text Content - Elegant Typography */}
           <h2 className="text-xl font-bold text-white/95 mb-2 tracking-tight">
-            تسجيل الخروج
+            هل تود المغادرة؟
           </h2>
           <p className="text-sm text-gray-400/80 leading-relaxed mb-8 px-2">
-            هل أنت متأكد أنك تريد تسجيل الخروج من حسابك؟
+            هل أنت متأكد أنك تريد الخروج من التطبيق؟
           </p>
 
           {/* Action Buttons - Modern & Soft */}
