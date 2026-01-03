@@ -8,9 +8,16 @@ interface Props {
   cartItemCount: number;
   isLoggedIn?: boolean;
   onLoginClick?: () => void;
+  hasUnreadNotifications?: boolean;
 }
 
-const TopHeader: React.FC<Props> = ({ setView, formattedBalance, isLoggedIn = true, onLoginClick }) => {
+const TopHeader: React.FC<Props> = ({ 
+  setView, 
+  formattedBalance, 
+  isLoggedIn = true, 
+  onLoginClick,
+  hasUnreadNotifications = false 
+}) => {
   return (
     <div className="absolute top-0 left-0 right-0 flex justify-between items-center px-4 bg-[#13141f]/95 backdrop-blur-md border-b border-gray-800/50 z-50 h-[65px] shadow-sm">
          {/* Right: Balance/Wallet OR Login (First in RTL) */}
@@ -62,7 +69,9 @@ const TopHeader: React.FC<Props> = ({ setView, formattedBalance, isLoggedIn = tr
              <button onClick={() => setView(View.NOTIFICATIONS)} className="bg-[#242636] p-2.5 rounded-xl text-yellow-400 hover:text-yellow-300 hover:bg-[#2f3245] border border-transparent hover:border-gray-700 transition-all active:scale-95 relative shadow-sm">
                <Bell size={22} strokeWidth={2} />
                {/* Notification Dot */}
-               <span className="absolute top-2.5 right-3 w-2 h-2 bg-red-500 rounded-full border-2 border-[#242636]"></span>
+               {hasUnreadNotifications && (
+                 <span className="absolute top-2.5 right-3 w-2 h-2 bg-red-500 rounded-full border-2 border-[#242636] animate-pulse"></span>
+               )}
              </button>
          </div>
       </div>

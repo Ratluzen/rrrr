@@ -370,6 +370,7 @@ useEffect(() => {
   const [announcements, setAnnouncements] = useState<Announcement[]>(() => loadCache<Announcement[]>('cache_announcements_v1', []));
   const [announcementsHasMore, setAnnouncementsHasMore] = useState<boolean>(true);
   const [announcementsLoadingMore, setAnnouncementsLoadingMore] = useState<boolean>(false);
+  const [lastSeenAnnouncementId, setLastSeenAnnouncementId] = useState<string>(() => localStorage.getItem('last_seen_announcement_id') || '');
   const [currencies, setCurrencies] = useState<Currency[]>(() => loadCache<Currency[]>('cache_currencies_v1', INITIAL_CURRENCIES));
   const [orders, setOrders] = useState<Order[]>(() => {
     if (persistedAdminAuth) return [];
@@ -1079,6 +1080,13 @@ useEffect(() => {
     }
 
     setCurrentView(view);
+    
+    // Mark notifications as read when entering notifications view
+    if (view === View.NOTIFICATIONS && announcements.length > 0) {
+      const latestId = announcements[0].id;
+      setLastSeenAnnouncementId(latestId);
+      localStorage.setItem('last_seen_announcement_id', latestId);
+    }
   };
 
   const handleProductSelect = (product: Product) => {
@@ -2267,6 +2275,7 @@ useEffect(() => {
             cartItemCount={cartItems.length}
             isLoggedIn={!!currentUser}
             onLoginClick={() => setShowLoginModal(true)}
+            hasUnreadNotifications={announcements.length > 0 && announcements[0].id !== lastSeenAnnouncementId}
           />
         )}
 
