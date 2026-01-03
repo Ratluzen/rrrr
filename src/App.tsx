@@ -17,6 +17,7 @@ import { INITIAL_CURRENCIES, PRODUCTS as INITIAL_PRODUCTS, CATEGORIES as INITIAL
 import api, { productService, orderService, contentService, userService, walletService, inventoryService, authService, cartService, paymentService, pushService } from './services/api';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
+import { App as CapApp } from '@capacitor/app';
 import { PushNotificationSchema, PushNotifications } from '@capacitor/push-notifications';
 import { extractOrdersFromResponse, normalizeOrderFromApi, normalizeOrdersFromApi } from './utils/orders';
 import { generateShortId } from './utils/id';
@@ -200,6 +201,7 @@ const App: React.FC = () => {
   const inAppNotifTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const actionToastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pushInitRef = useRef(false);
+  const navigationHistory = useRef<View[]>([]);
 
   // --- Firebase FCM Token (for Push Notifications) ---
   const [fcmToken, setFcmToken] = useState<string>(() => localStorage.getItem('fcm_token') || '');
@@ -222,11 +224,42 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
+    // Handle Hardware Back Button for Android
+    const backButtonListener = CapApp.addListener('backButton', async ({ canGoBack }) => {
+      if (currentView !== View.HOME) {
+        // If not on Home, go back to previous view or Home
+        if (navigationHistory.current.length > 0) {
+          const prevView = navigationHistory.current.pop();
+          if (prevView) setCurrentView(prevView);
+        } else {
+          setCurrentView(View.HOME);
+        }
+      } else {
+        // If on Home, show confirmation alert before exit
+        const confirmExit = window.confirm("هل تريد الخروج من التطبيق؟");
+        if (confirmExit) {
+          CapApp.exitApp();
+        }
+      }
+    });
+
     return () => {
+      backButtonListener.then(l => l.remove());
       if (inAppNotifTimeout.current) clearTimeout(inAppNotifTimeout.current);
       if (actionToastTimeout.current) clearTimeout(actionToastTimeout.current);
     };
-  }, []);
+  }, [currentView]);
+
+  // Track navigation history
+  useEffect(() => {
+    if (navigationHistory.current[navigationHistory.current.length - 1] !== currentView) {
+      navigationHistory.current.push(currentView);
+      // Keep history reasonable
+      if (navigationHistory.current.length > 10) {
+        navigationHistory.current.shift();
+      }
+    }
+  }, [currentView]);
 
   const showLocalNotification = async (notification: PushNotificationSchema) => {
     if (typeof window === 'undefined') return;
