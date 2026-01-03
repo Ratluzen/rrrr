@@ -1,11 +1,13 @@
 import axios, { InternalAxiosRequestConfig, AxiosError, AxiosHeaders } from "axios";
 
 // ============================================================
-// ✅ Vite Env: اقرأ الرابط من VITE_API_URL (مع fallback)
+// ✅ Vite Env: اقرأ الرابط من VITE_API_URL لضمان الأمان والمرونة
 // ============================================================
-const API_URL =
-  ((import.meta as any).env?.VITE_API_URL as string) ||
-  "https://rrrr-production-f1ca.up.railway.app/api";
+const API_URL = (import.meta as any).env?.VITE_API_URL as string;
+
+if (!API_URL) {
+  console.warn("⚠️ Warning: VITE_API_URL is not defined. API calls may fail.");
+}
 
 console.log("Connecting to API:", API_URL);
 
