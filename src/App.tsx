@@ -199,6 +199,7 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() =>
     hasToken ? loadCache<UserProfile | null>('cache_user_v1', null) : null
   ); // Start as null (Guest)
+  const [hasBannedOverride, setHasBannedOverride] = useState(false);
   const [inAppNotification, setInAppNotification] = useState<{ title: string; body: string } | null>(null);
   const [actionToast, setActionToast] = useState<{ title: string; message?: string } | null>(null);
   const inAppNotifTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -229,6 +230,16 @@ const App: React.FC = () => {
     return isNaN(parsed.getTime())
       ? rawDate
       : parsed.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+  };
+
+  const markUserAsBanned = () => {
+    setHasBannedOverride(true);
+    setCurrentUser(prev => {
+      if (prev) return { ...prev, status: 'banned' };
+
+      const cachedUser = hasToken ? loadCache<UserProfile | null>('cache_user_v1', null) : null;
+      return cachedUser ? { ...cachedUser, status: 'banned' } : prev;
+    });
   };
 
   const showInAppBanner = (title: string, body?: string) => {
@@ -430,7 +441,9 @@ useEffect(() => {
   }, []);
 
   // Check for ban status on every user update
-  const isUserBanned = currentUser?.status === 'banned' && currentUser?.role !== 'admin';
+  const isUserBanned =
+    (currentUser?.status === 'banned' && currentUser?.role !== 'admin') ||
+    (hasBannedOverride && currentUser?.role !== 'admin');
   
   // --- Global App State (Lifted for Admin Control) ---
   const [products, setProducts] = useState<Product[]>(() => loadCache<Product[]>('cache_products_v1', INITIAL_PRODUCTS));
@@ -623,7 +636,7 @@ useEffect(() => {
         if (isBannedError && status === 403) {
           // If banned, update local state to 'banned' to show the overlay, but keep user data
           console.warn('User is banned (403) -> showing ban overlay', error);
-          setCurrentUser(prev => prev ? ({ ...prev, status: 'banned' }) : null);
+          markUserAsBanned();
           return;
         }
 
@@ -672,7 +685,7 @@ useEffect(() => {
       if (isBannedError && status === 403) {
         // If banned, update local state to 'banned' to show the overlay, but keep user data
         console.warn('User is banned (403) -> showing ban overlay', error);
-        setCurrentUser(prev => prev ? ({ ...prev, status: 'banned' }) : null);
+        markUserAsBanned();
         return;
       }
 
@@ -1192,6 +1205,7 @@ useEffect(() => {
   // --- User Logout Logic ---
   const handleUserLogout = () => {
       setCurrentUser(null);
+      setHasBannedOverride(false);
       // Ensure admin session is also cleared for security
       if (isAdminLoggedIn) {
           setIsAdminLoggedIn(false);
@@ -2346,7 +2360,7 @@ useEffect(() => {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-500">معرف المستخدم:</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-white font-mono select-all">{currentUser?.id}</span>
+                  <span className="text-white font-mono select-all">{currentUser?.id || '—'}</span>
                   <button 
                     onClick={() => {
                       navigator.clipboard.writeText(currentUser?.id || '');
