@@ -216,6 +216,21 @@ const App: React.FC = () => {
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
 
+  const getFormattedBanDate = () => {
+    const rawDate =
+      currentUser?.bannedAt ||
+      (currentUser as any)?.banned_at ||
+      currentUser?.createdAt ||
+      currentUser?.joinedDate;
+
+    if (!rawDate) return '—';
+
+    const parsed = new Date(rawDate);
+    return isNaN(parsed.getTime())
+      ? rawDate
+      : parsed.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+  };
+
   const showInAppBanner = (title: string, body?: string) => {
     setInAppNotification({ title, body: body || '' });
   };
@@ -2345,9 +2360,7 @@ useEffect(() => {
               </div>
               <div className="flex items-center justify-between text-sm border-t border-gray-700/30 pt-3">
                 <span className="text-gray-500">تاريخ الإجراء:</span>
-                <span className="text-gray-300">
-                  {new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}
-                </span>
+                <span className="text-gray-300">{getFormattedBanDate()}</span>
               </div>
             </div>
 
