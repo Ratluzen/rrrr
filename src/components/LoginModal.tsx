@@ -104,13 +104,15 @@ const LoginModal: React.FC<Props> = ({ isOpen, onClose, onLogin, terms }) => {
       password: password
     };
 
+    let serverData = null;
     try {
       // ✅ استدعاءات تسجيل الدخول / إنشاء الحساب
       const res = mode === 'register'
         ? await authService.register(payload)
         : await authService.login(payload);
 
-      const token = (res as any)?.data?.token;
+      serverData = (res as any)?.data;
+      const token = serverData?.token;
       if (token) {
         localStorage.setItem('token', token);
       }
@@ -120,8 +122,8 @@ const LoginModal: React.FC<Props> = ({ isOpen, onClose, onLogin, terms }) => {
       return; // ما نسوي onLogin إذا فشل الطلب
     }
 
-    // نفس السلوك القديم – إرجاع البيانات للأب
-    onLogin(payload);
+    // إرجاع بيانات السيرفر (التي تحتوي على الحالة status) للأب
+    onLogin(serverData || payload);
   };
 
   return (

@@ -32,6 +32,7 @@ const protect = asyncHandler(async (req, res, next) => {
         
         if (!isProfileRequest) {
           res.status(403);
+          // Frontend expects this exact message to trigger the ban overlay
           throw new Error('تم حظر حسابك. لا يمكنك إجراء هذه العملية.');
         }
       }

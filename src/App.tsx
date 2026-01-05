@@ -1079,21 +1079,27 @@ useEffect(() => {
   const balanceUSD = currentUser ? currentUser.balance : 0.00;
 
   // --- Login Logic (إصلاح: الاعتماد على الباك إند / التوكن) ---
-  const handleLogin = async (_data: { name?: string; email?: string; phone?: string; password?: string; isRegister: boolean }) => {
+  const handleLogin = async (serverData?: any) => {
     try {
-      // بعد نجاح register/login في LoginModal والتوكن تخزن، نجلب البروفايل من الباك إند
-      const res = await authService.getProfile();
-      if (res && res.data) {
-        const userData = res.data;
+      // If serverData is passed from LoginModal, use it, otherwise fetch profile
+      let userData = serverData;
+      
+      if (!userData || !userData.id) {
+        const res = await authService.getProfile();
+        userData = res?.data;
+      }
+
+      if (userData) {
         setCurrentUser(userData);
+        saveCache('cache_user_v1', userData); // Update cache immediately
 
         // Check if user status is banned in the response data
         if (userData.status === 'banned' && userData.role !== 'admin') {
           markUserAsBanned();
         }
 
-        if ((userData as any)?.preferredCurrency) {
-          const pc = (res.data as any).preferredCurrency;
+        if (userData.preferredCurrency) {
+          const pc = userData.preferredCurrency;
           setCurrencyCode(pc);
           localStorage.setItem('currencyCode', String(pc));
         }
