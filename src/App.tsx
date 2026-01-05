@@ -630,9 +630,11 @@ useEffect(() => {
         const status = error?.response?.status;
 
         // ✅ Handle Ban (403) or Invalid Token (401)
-        const isBannedError = error?.response?.data?.message?.includes('تم حظر حسابك') || error?.message?.includes('تم حظر حسابك');
+        const isBannedError =
+          error?.response?.data?.message?.includes('تم حظر حسابك') ||
+          error?.message?.includes('تم حظر حسابك');
 
-        if (isBannedError && status === 403) {
+        if (status === 403 || isBannedError) {
           // If banned, update local state to 'banned' to show the overlay, but keep user data
           console.warn('User is banned (403) -> showing ban overlay', error);
           markUserAsBanned();
@@ -686,9 +688,11 @@ useEffect(() => {
     } catch (error: any) {
       // If token expired/invalid -> logout safely
       const status = error?.response?.status;
-      const isBannedError = error?.response?.data?.message?.includes('تم حظر حسابك') || error?.message?.includes('تم حظر حسابك');
+      const isBannedError =
+        error?.response?.data?.message?.includes('تم حظر حسابك') ||
+        error?.message?.includes('تم حظر حسابك');
 
-      if (isBannedError && status === 403) {
+      if (status === 403 || isBannedError) {
         // If banned, update local state to 'banned' to show the overlay, but keep user data
         console.warn('User is banned (403) -> showing ban overlay', error);
         markUserAsBanned();
