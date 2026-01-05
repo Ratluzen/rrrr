@@ -2397,7 +2397,7 @@ useEffect(() => {
                 </div>
               </div>
               <div className="flex items-center justify-between text-sm border-t border-gray-700/30 pt-3">
-                <span className="text-gray-500">تاريخ الإجراء:</span>
+                <span className="text-gray-500">تاريخ الحظر:</span>
                 <span className="text-gray-300">{getFormattedBanDate()}</span>
               </div>
             </div>
