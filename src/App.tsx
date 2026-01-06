@@ -14,7 +14,7 @@ import InvoiceModal from './components/InvoiceModal'; // Import InvoiceModal
 import LoginModal from './components/LoginModal'; // Import LoginModal
 import ExitConfirmModal from './components/ExitConfirmModal'; // Import ExitConfirmModal
 import SupportModal from './components/SupportModal'; // Import SupportModal
-import { ShoppingBag, ShoppingCart, Trash2, ArrowLeft, CheckCircle, Clock, X, CheckSquare, AlertTriangle, Receipt, Copy, ChevronDown, ChevronUp, ShieldAlert, Lock, Flag, Tags, User, CreditCard, Facebook, Instagram, Gamepad2, Smartphone, Gift, Globe, Tag, Box, Monitor, MessageCircle, Heart, Star, Coins } from 'lucide-react';
+import { ShoppingBag, ShoppingCart, Trash2, ArrowLeft, CheckCircle, Clock, X, CheckSquare, AlertTriangle, Receipt, Copy, ChevronDown, ChevronUp, ShieldAlert, Lock, Flag, Tags, User, CreditCard, Facebook, Instagram, Gamepad2, Smartphone, Gift, Globe, Tag, Box, Monitor, MessageCircle, Heart, Star, Coins, LogOut } from 'lucide-react';
 import { INITIAL_CURRENCIES, PRODUCTS as INITIAL_PRODUCTS, CATEGORIES as INITIAL_CATEGORIES, INITIAL_TERMS, INITIAL_BANNERS, MOCK_USERS, MOCK_ORDERS, MOCK_INVENTORY, TRANSACTIONS as INITIAL_TRANSACTIONS } from './constants';
 import api, { productService, orderService, contentService, userService, walletService, inventoryService, authService, cartService, paymentService, pushService } from './services/api';
 import { Filesystem, Directory } from '@capacitor/filesystem';
@@ -227,9 +227,14 @@ const App: React.FC = () => {
     if (!rawDate) return '—';
 
     const parsed = new Date(rawDate);
-    return isNaN(parsed.getTime())
-      ? rawDate
-      : parsed.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+    if (isNaN(parsed.getTime())) return rawDate;
+    
+    const day = parsed.getDate();
+    const monthNames = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+    const month = monthNames[parsed.getMonth()];
+    const year = parsed.getFullYear();
+    
+    return `${day} ${month} ${year}`;
   };
 
   const markUserAsBanned = () => {
@@ -2343,70 +2348,32 @@ useEffect(() => {
           <BottomNav currentView={currentView} setView={handleSetView} />
         )}
 
-        {/* Global Ban Overlay */}
+        {/* Global Ban Overlay (Using the enhanced Profile Ban UI) */}
         {isUserBanned && (
-          <div className="fixed inset-0 z-[400] bg-[#13141f] flex flex-col items-center justify-center px-8 text-center animate-fadeIn">
-            <div className="w-24 h-24 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20">
-              <ShieldAlert size={48} className="text-red-500" />
-            </div>
-            <h1 className="text-2xl font-bold text-white mb-4">تم حظر حسابك</h1>
-            <p className="text-gray-400 mb-6 leading-relaxed">
-              عذراً، لقد تم حظر حسابك من قبل الإدارة بسبب مخالفة شروط الاستخدام. 
-              إذا كنت تعتقد أن هذا خطأ، يرجى التواصل مع الدعم الفني.
-            </p>
-
-            {/* User Info for Support */}
-            <div className="w-full bg-[#242636] rounded-2xl p-4 mb-8 border border-gray-700/50 space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">معرف المستخدم:</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-white font-mono select-all">{currentUser?.id || '—'}</span>
-                  <button 
-                    onClick={() => {
-                      navigator.clipboard.writeText(currentUser?.id || '');
-                      showActionToast('تم نسخ المعرف');
-                    }}
-                    className="p-1.5 bg-[#13141f] rounded-lg text-gray-400 active:text-white"
-                  >
-                    <Copy size={14} />
-                  </button>
-                </div>
-              </div>
-              <div className="flex items-center justify-between text-sm border-t border-gray-700/30 pt-3">
-                <span className="text-gray-500">تاريخ الإجراء:</span>
-                <span className="text-gray-300">{getFormattedBanDate()}</span>
-              </div>
-            </div>
-
-            <div className="w-full space-y-3">
-              <button
-                onClick={() => setIsSupportModalOpen(true)}
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2"
-              >
-                <MessageCircle size={20} />
-                تواصل مع الدعم الفني
-              </button>
-              <button
-                onClick={() => {
-                  localStorage.removeItem('token');
-                  localStorage.removeItem('cache_user_v1');
-                  window.location.reload();
-                }}
-                className="w-full bg-[#242636] text-gray-300 font-bold py-4 rounded-2xl transition-all active:scale-95"
-              >
-                تسجيل الخروج
-              </button>
-
-              {/* Support options sheet (same as profile support button) */}
-              <SupportModal
-                isOpen={isSupportModalOpen}
-                onClose={() => setIsSupportModalOpen(false)}
-                whatsappNumber={terms.contactWhatsapp}
-                telegramUsername={terms.contactTelegram}
-              />
-            </div>
-          </div>
+          <Profile 
+            setView={handleSetView}
+            currentCurrency={currencyCode}
+            onCurrencyChange={setCurrencyCode}
+            terms={terms}
+            user={currentUser || undefined}
+            currencies={currencies}
+            rateAppLink={(terms as any).rateAppLink || ''}
+            onLogout={() => {
+              localStorage.removeItem('token');
+              localStorage.removeItem('cache_user_v1');
+              window.location.reload();
+            }}
+            onUpdateUser={setCurrentUser}
+          />
         )}
+
+        {/* Support Modal for Ban Overlay */}
+        <SupportModal
+          isOpen={isSupportModalOpen}
+          onClose={() => setIsSupportModalOpen(false)}
+          whatsappNumber={terms.contactWhatsapp}
+          telegramUsername={terms.contactTelegram}
+        />
         
         {/* Global Product Details Modal - Rendered here to cover entire screen including header/footer */}
         {selectedProduct && (

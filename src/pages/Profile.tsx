@@ -5,7 +5,7 @@ import {
   ChevronLeft, HelpCircle, FileText, 
   LogOut, Star, Trash2, Bell, Wallet, ClipboardList, Headset,
   CircleDollarSign, Check, Camera, User as UserIcon, Phone, Mail, X, Save, Edit2,
-  Send, ShieldAlert, ChevronDown, AlertTriangle, Lock, Eye, EyeOff, Key
+  Send, ShieldAlert, ChevronDown, AlertTriangle, Lock, Eye, EyeOff, Key, Copy, MessageCircle
 } from 'lucide-react';
 import SupportModal from '../components/SupportModal';
 import { View, AppTerms, UserProfile, Currency } from '../types';
@@ -219,30 +219,97 @@ const Profile: React.FC<Props> = ({ setView, currentCurrency, onCurrencyChange, 
       setExpandedFaq(expandedFaq === index ? null : index);
   };
 
-  // If user is banned
+  // If user is banned, show the enhanced ban UI (matches the requested design)
   if (user?.status === 'banned') {
-      return (
-          <div className="min-h-screen bg-[#13141f] flex flex-col items-center justify-center p-6 text-center">
-              <ShieldAlert size={64} className="text-red-500 mb-4" />
-              <h1 className="text-2xl font-bold text-white mb-2">تم حظر حسابك</h1>
-              <p className="text-gray-400">يرجى التواصل مع الدعم الفني لاستعادة الوصول.</p>
-              <button onClick={() => setShowSupportModal(true)} className="mt-6 bg-red-600 text-white px-6 py-3 rounded-xl font-bold">الدعم الفني</button>
-               {/* Support Modal (Included even when banned) */}
-               {showSupportModal && (
-                    <div className="fixed inset-0 z-[60] flex items-end justify-center">
-                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowSupportModal(false)}></div>
-                        <div className="bg-[#1f212e] w-full max-w-md rounded-t-3xl p-6 relative z-10 animate-slide-up border-t border-gray-700">
-                           <h2 className="text-xl font-bold mb-4 text-center text-white">الدعم الفني</h2>
-                           <div className="grid grid-cols-2 gap-4 mb-6">
-                             <button onClick={() => window.open('https://wa.me/9647763410970', '_blank')} className="bg-[#242636] p-5 rounded-2xl flex flex-col items-center gap-3 border border-gray-700 text-white font-bold">واتس اب</button>
-                             <button onClick={() => window.open('https://t.me/Ratluzen', '_blank')} className="bg-[#242636] p-5 rounded-2xl flex flex-col items-center gap-3 border border-gray-700 text-white font-bold">تيليجرام</button>
-                           </div>
-                           <button onClick={() => setShowSupportModal(false)} className="w-full bg-gray-700 text-white font-bold py-3.5 rounded-xl">إغلاق</button>
-                        </div>
-                    </div>
-               )}
+    const getFormattedBanDate = () => {
+      const rawDate = (user as any)?.bannedAt || (user as any)?.banned_at || user?.createdAt || (user as any)?.joinedDate;
+      if (!rawDate) return '—';
+      const parsed = new Date(rawDate);
+      if (isNaN(parsed.getTime())) return rawDate;
+      const day = parsed.getDate();
+      const monthNames = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+      const yearVal = parsed.getFullYear();
+      return `${day} ${monthNames[parsed.getMonth()]} ${yearVal}`;
+    };
+
+    // Note: 'year' is not defined in the scope above, let's fix the date logic inside the component
+    const parsedDate = new Date((user as any)?.bannedAt || (user as any)?.banned_at || user?.createdAt || "");
+    const formattedBanDate = !isNaN(parsedDate.getTime()) 
+      ? `${parsedDate.getDate()} ${["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"][parsedDate.getMonth()]} ${parsedDate.getFullYear()}`
+      : "—";
+
+    return (
+      <div className="fixed inset-0 z-[500] bg-[#13141f] flex flex-col items-center justify-center px-8 text-center animate-fadeIn">
+        {/* Shield Icon with Glow */}
+        <div className="relative mb-10">
+          <div className="absolute inset-0 bg-red-500/20 blur-2xl rounded-full"></div>
+          <div className="w-24 h-24 bg-red-500/10 rounded-full flex items-center justify-center border border-red-500/20 relative z-10">
+            <ShieldAlert size={48} className="text-red-500" />
           </div>
-      );
+        </div>
+
+        {/* Title */}
+        <h1 className="text-3xl font-black text-white mb-4 tracking-tight">تم حظر حسابك</h1>
+        
+        {/* Description */}
+        <p className="text-gray-400 mb-10 leading-relaxed text-sm max-w-xs">
+          عذراً، لقد تم حظر حسابك من قبل الإدارة بسبب مخالفة شروط الاستخدام. إذا كنت تعتقد أن هذا خطأ، يرجى التواصل مع الدعم الفني.
+        </p>
+
+        {/* Info Card */}
+        <div className="w-full bg-[#1c1e2d] rounded-[2rem] p-6 mb-10 border border-gray-800/50 space-y-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => {
+                  navigator.clipboard.writeText(user?.id || '');
+                  alert('تم نسخ المعرف');
+                }}
+                className="p-2 bg-[#13141f] rounded-xl text-gray-400 active:text-white transition-colors"
+              >
+                <Copy size={18} />
+              </button>
+              <span className="text-white font-bold text-lg">{user?.id || '—'}</span>
+            </div>
+            <span className="text-gray-500 font-medium">معرف المستخدم</span>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <span className="text-white font-bold text-lg">{formattedBanDate}</span>
+            <span className="text-gray-500 font-medium">تاريخ الإجراء</span>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="w-full space-y-4">
+          <button
+            onClick={() => setShowSupportModal(true)}
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-5 rounded-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-lg shadow-lg shadow-red-600/20"
+          >
+            <MessageCircle size={24} />
+            تواصل مع الدعم الفني
+          </button>
+          
+          <button
+            onClick={onLogout}
+            className="w-full bg-[#1c1e2d] hover:bg-[#25283a] text-white font-black py-5 rounded-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-lg border border-gray-800/50"
+          >
+            <LogOut size={24} />
+            تسجيل الخروج
+          </button>
+        </div>
+
+        {/* Support Modal */}
+        {showSupportModal && (
+          <SupportModal
+            isOpen={showSupportModal}
+            onClose={() => setShowSupportModal(false)}
+            whatsappNumber={terms.contactWhatsapp}
+            telegramUsername={terms.contactTelegram}
+          />
+        )}
+      </div>
+    );
   }
 
   return (
