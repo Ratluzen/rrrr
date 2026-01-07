@@ -263,7 +263,7 @@ const finalizePayment = async ({ paymentId, tranRef, queryResult }) => {
 
     // --- TOPUP ---
     if (innerType === 'topup') {
-      await tx.user.update({
+      const updatedUser = await tx.user.update({
         where: { id: userId },
         data: { balance: { increment: amountNumber } },
       });
@@ -279,6 +279,31 @@ const finalizePayment = async ({ paymentId, tranRef, queryResult }) => {
           description: 'شحن عبر PayTabs (Visa/Mastercard)',
           paymentId: updatedPayment.id,
         },
+      });
+
+      // Send Notification & FCM Push for Topup
+      const title = 'تم شحن رصيدك بنجاح';
+      const message = `تم إضافة ${amountNumber} رصيد إلى حسابك عبر البطاقة. رصيدك الحالي هو ${updatedUser.balance}.`;
+      
+      // We use setImmediate to not block the transaction completion
+      setImmediate(async () => {
+        try {
+          const { sendNotification, sendFcmPush } = require('./notificationController');
+          const { getTokensForUsers } = require('../utils/tokenStore');
+          
+          await sendNotification(userId, title, message, 'wallet_credit');
+          
+          const tokens = await getTokensForUsers([userId]);
+          if (tokens.length > 0) {
+            await sendFcmPush(tokens.map(t => t.token), {
+              title,
+              body: message,
+              data: { type: 'wallet_deposit', amount: String(amountNumber) }
+            });
+          }
+        } catch (err) {
+          console.error('Failed to send topup notifications:', err);
+        }
       });
 
       return { payment: updatedPayment, type: innerType };

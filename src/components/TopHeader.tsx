@@ -68,9 +68,11 @@ const TopHeader: React.FC<Props> = ({
              {/* Only show notifications if logged in, or generic alerts? Let's allow view but it might be empty */}
              <button onClick={() => setView(View.NOTIFICATIONS)} className="bg-[#242636] p-2.5 rounded-xl text-yellow-400 hover:text-yellow-300 hover:bg-[#2f3245] border border-transparent hover:border-gray-700 transition-all active:scale-95 relative shadow-sm">
                <Bell size={22} strokeWidth={2} />
-               {/* Notification Dot */}
+               {/* Notification Badge */}
                {hasUnreadNotifications && (
-                 <span className="absolute top-2.5 right-3 w-2 h-2 bg-red-500 rounded-full border-2 border-[#242636] animate-pulse"></span>
+                 <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full border-2 border-[#13141f] flex items-center justify-center animate-bounce shadow-lg">
+                   !
+                 </span>
                )}
              </button>
          </div>

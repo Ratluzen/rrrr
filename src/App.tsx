@@ -2385,7 +2385,7 @@ useEffect(() => {
             cartItemCount={cartItems.length}
             isLoggedIn={!!currentUser}
             onLoginClick={() => setShowLoginModal(true)}
-            hasUnreadNotifications={announcements.length > 0 && announcements[0].id !== lastSeenAnnouncementId}
+            hasUnreadNotifications={announcements.some(a => a.id !== lastSeenAnnouncementId)}
           />
         )}
 
