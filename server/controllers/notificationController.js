@@ -299,7 +299,7 @@ const notifyAdminsPush = async ({ order, title, message, extraData } = {}) => {
         adminId,
         pushPayload.title || 'طلب جديد',
         pushPayload.body || (order?.id ? `تم إنشاء طلب جديد رقم ${order.id}` : 'تم إنشاء طلب جديد'),
-        'order'
+        'order_pending'
       )
     )
   );
@@ -413,12 +413,19 @@ const sendUserOrderNotification = async ({ orderId, status, userId, title, messa
     }
   );
 
-  await sendNotification(
-    targetUserId,
-    pushPayload.title || 'تحديث الطلب',
-    pushPayload.body || (status ? `تم تحديث حالة الطلب إلى ${status}` : 'تم تحديث حالة الطلب'),
-    'order'
-  );
+    // Determine specific order type for coloring
+    let orderType = 'order';
+    const currentStatus = status || order?.status;
+    if (currentStatus === 'pending') orderType = 'order_pending';
+    else if (currentStatus === 'completed') orderType = 'order_completed';
+    else if (currentStatus === 'cancelled') orderType = 'order_cancelled';
+
+    await sendNotification(
+      targetUserId,
+      pushPayload.title || 'تحديث الطلب',
+      pushPayload.body || (status ? `تم تحديث حالة الطلب إلى ${status}` : 'تم تحديث حالة الطلب'),
+      orderType
+    );
 
   const tokens = await getTokensForUsers([targetUserId]);
   const push = await sendFcmPush(

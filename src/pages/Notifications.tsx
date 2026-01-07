@@ -68,8 +68,12 @@ const Notifications: React.FC<Props> = ({
                 ? 'border-red-500 border-l-red-500'
                 : ann.type === 'ad'
                 ? 'border-purple-500 border-l-purple-500'
-                : ann.type === 'order'
+                : ann.type === 'order' || ann.type === 'order_pending'
+                ? 'border-yellow-500 border-l-yellow-500'
+                : ann.type === 'order_completed'
                 ? 'border-emerald-500 border-l-emerald-500'
+                : ann.type === 'order_cancelled'
+                ? 'border-red-500 border-l-red-500'
                 : ann.type === 'wallet'
                 ? 'border-amber-500 border-l-amber-500'
                 : ann.type === 'account'
@@ -86,8 +90,12 @@ const Notifications: React.FC<Props> = ({
                   ? 'bg-red-500'
                   : ann.type === 'ad'
                   ? 'bg-purple-500'
-                  : ann.type === 'order'
+                  : ann.type === 'order' || ann.type === 'order_pending'
+                  ? 'bg-yellow-500'
+                  : ann.type === 'order_completed'
                   ? 'bg-emerald-500'
+                  : ann.type === 'order_cancelled'
+                  ? 'bg-red-500'
                   : ann.type === 'wallet'
                   ? 'bg-amber-500'
                   : ann.type === 'account'
@@ -101,7 +109,9 @@ const Notifications: React.FC<Props> = ({
               {ann.type === 'alert' && <AlertTriangle className="text-red-500" size={32} />}
               {ann.type === 'info' && <Info className="text-blue-500" size={32} />}
               {ann.type === 'ad' && <Megaphone className="text-purple-500" size={32} />}
-              {ann.type === 'order' && <ShoppingBag className="text-emerald-500" size={32} />}
+              {(ann.type === 'order' || ann.type === 'order_pending') && <ShoppingBag className="text-yellow-500" size={32} />}
+              {ann.type === 'order_completed' && <ShoppingBag className="text-emerald-500" size={32} />}
+              {ann.type === 'order_cancelled' && <ShoppingBag className="text-red-500" size={32} />}
               {ann.type === 'wallet' && <Wallet className="text-amber-500" size={32} />}
               {ann.type === 'account' && <ShieldAlert className="text-rose-500" size={32} />}
             </div>
