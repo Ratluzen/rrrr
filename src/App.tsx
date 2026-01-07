@@ -1914,7 +1914,7 @@ useEffect(() => {
             setBanners={setBanners}
             users={users}
             setUsers={setUsers}
-            announcements={announcements}
+            announcements={announcements.filter(a => !a.userId)}
             setAnnouncements={setAnnouncements}
             announcementsHasMore={announcementsHasMore}
             announcementsLoadingMore={announcementsLoadingMore}
