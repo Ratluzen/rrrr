@@ -997,20 +997,23 @@ useEffect(() => {
       const notifItems = Array.isArray(notifRes.data) ? notifRes.data : (notifRes.data?.items || []);
 
       const notificationKey = (item: Announcement) => {
-        // ✅ STRONGER DEDUPLICATION: 
-        // When an admin broadcasts, it creates an Announcement (public) AND a Notification (private).
-        // They have different IDs but identical title/message.
-        // We use a composite key of title + message to treat them as the same entity.
+        // ✅ FINAL DEDUPLICATION LOGIC:
+        // To prevent the duplication seen in the screenshots (same title/message but different icons/types),
+        // we must deduplicate based on the core content (title + message).
         const title = (item.title || '').trim();
         const message = (item.message || '').trim();
         
-        // If it's a system notification (like order update), it might have a unique ID we should trust.
-        // But for general info/broadcasts, title+message is a better deduplicator.
-        if (item.type === 'info' || !item.type) {
-          return `content|${title}|${message}`;
+        // If it's an order update, it usually has an orderId in the message or data.
+        // We want to keep those separate if they are different orders.
+        // But for general messages ("شلونكم", "احبكم"), title+message is the best key.
+        const isOrder = item.type === 'order' || title.includes('طلب') || message.includes('طلب');
+        
+        if (isOrder && item.id) {
+          return `order|${item.id}|${title}|${message}`;
         }
 
-        return item.id ? String(item.id) : `composite|${item.type}|${title}|${message}`;
+        // For everything else, if title and message are the same, it's a duplicate.
+        return `content|${title}|${message}`;
       };
 
       const dedupeNotifications = (items: Announcement[]) => {
