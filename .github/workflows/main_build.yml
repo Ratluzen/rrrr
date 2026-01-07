@@ -1,0 +1,169 @@
+name: Unified App Build & Release
+
+permissions:
+  contents: write
+  pull-requests: write
+
+on:
+  push:
+    branches: [ "main" ]
+    tags:
+      - '*.*.*'
+      - '*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'رقم الإصدار اليدوي (اختياري)'
+        required: false
+        type: string
+
+jobs:
+  build-and-release:
+    name: Build & Release
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: تحديد رقم الإصدار ونوع العملية
+        id: vars
+        run: |
+          IS_TAG_EVENT=false
+          if [[ "${{ github.ref }}" == refs/tags/* ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.version }}" != "" ]]; then
+            IS_TAG_EVENT=true
+          fi
+          echo "is_tag_event=$IS_TAG_EVENT" >> $GITHUB_OUTPUT
+          
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.version }}" != "" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            VERSION=${TAG_NAME#v}
+          else
+            LATEST_RELEASE=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || echo "")
+            if [ -n "$LATEST_RELEASE" ]; then
+              VERSION=${LATEST_RELEASE#v}
+            else
+              VERSION=$(node -p "require('./package.json').version")
+            fi
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 الإصدار المعتمد: $VERSION"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup Java (JDK 17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: تحديث رقم الإصدار في الملفات
+        env:
+          APP_VERSION: ${{ steps.vars.outputs.version }}
+        run: npm run update-version
+
+      - name: Build Web Assets
+        run: VITE_API_URL="https://rrrr-production-f1ca.up.railway.app/api" npm run build
+
+      - name: ضغط ملفات الويب (Web Build)
+        run: |
+          zip -r web-build-v${{ steps.vars.outputs.version }}.zip dist/
+
+      - name: Initialize Android Platform
+        run: npx cap add android
+
+      - name: تحديث رقم إصدار Android
+        env:
+          APP_VERSION: ${{ steps.vars.outputs.version }}
+        run: npm run update-android-version
+
+      - name: Add google-services.json (base64)
+        run: |
+          mkdir -p android/app
+          printf "%s" "${{ secrets.GOOGLE_SERVICES_JSON_B64 }}" | base64 --decode > android/app/google-services.json
+          test -s android/app/google-services.json
+
+      - name: Install Capacitor Assets Tool
+        run: npm i -D @capacitor/assets
+
+      - name: Generate Android assets from resources
+        run: npx @capacitor/assets generate --android
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Build APK & AAB (Always Release)
+        run: |
+          cd android
+          chmod +x gradlew
+          echo "🏗️ بناء ملف APK (للتثبيت المباشر)..."
+          ./gradlew assembleRelease
+          echo "🏗️ بناء ملف AAB (لمتجر جوجل بلاي)..."
+          ./gradlew bundleRelease
+
+      - name: توقيع ملف APK
+        uses: r0adkll/sign-android-release@v1
+        id: sign_apk
+        with:
+          releaseDirectory: android/app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: "34.0.0"
+
+      - name: توقيع ملف AAB (لمتجر بلاي)
+        uses: r0adkll/sign-android-release@v1
+        id: sign_aab
+        with:
+          releaseDirectory: android/app/build/outputs/bundle/release
+          signingKeyBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: "34.0.0"
+
+      - name: إنشاء Release ورفع الملفات
+        if: steps.vars.outputs.is_tag_event == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.vars.outputs.version }}
+          name: الإصدار ${{ steps.vars.outputs.version }}
+          files: |
+            ${{ steps.sign_apk.outputs.signedReleaseFile }}
+            ${{ steps.sign_aab.outputs.signedReleaseFile }}
+            web-build-v${{ steps.vars.outputs.version }}.zip
+          body: |
+            ## 🎉 الإصدار ${{ steps.vars.outputs.version }}
+            تم بناء وتوقيع الملفات تلقائياً.
+            
+            ### 📁 الملفات المرفقة:
+            1. **APK**: للتثبيت المباشر على الهواتف.
+            2. **AAB**: للرفع على متجر جوجل بلاي (Google Play Store).
+            3. **Web Build**: ملفات الويب جاهزة للنشر على أي استضافة.
+          draft: false
+          prerelease: false
+
+      - name: رفع الملفات كـ Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ratelozn-App-v${{ steps.vars.outputs.version }}
+          path: |
+            ${{ steps.sign_apk.outputs.signedReleaseFile }}
+            ${{ steps.sign_aab.outputs.signedReleaseFile }}
+            web-build-v${{ steps.vars.outputs.version }}.zip
+          retention-days: 14
