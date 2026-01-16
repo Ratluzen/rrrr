@@ -20,7 +20,7 @@ import {
   Truck, Anchor, Box, Crown, Diamond, Medal, Trophy,
   Cpu, HardDrive, Mouse, Keyboard, Laptop, Tablet,
   Router, Signal, Radio, Tv, Speaker, Mic,
-  Ticket, Film, Clapperboard, Image, Palette, Brush,
+  Ticket, Film, Clapperboard, Sparkles, Palette, Brush,
   Dumbbell, Bike, Pizza, Utensils, Bed, Home, Building,
   GraduationCap, School, BookOpen, Library,
   LayoutGrid, Check, Settings2, LogOut
