@@ -52,5 +52,5 @@ export const INITIAL_TERMS: AppTerms = {
   contentAr: '',
   contentEn: '',
   contactWhatsapp: '9647763410970',
-  contactTelegram: 'Ratluzen',
+  contactTelegram: 'ratnzer',
 } as AppTerms;
