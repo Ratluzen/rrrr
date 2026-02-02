@@ -75,7 +75,7 @@ jobs:
         run: npm run update-version
 
       - name: Build Web Assets
-        run: VITE_API_URL="https://rrrr-production-f1ca.up.railway.app/api" npm run build
+        run: VITE_API_URL="https://rrrr-ratluzens-projects.vercel.app/api" npm run build
 
       - name: ضغط ملفات الويب (Web Build)
         run: |
