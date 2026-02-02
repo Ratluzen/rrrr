@@ -4,7 +4,6 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
-const { exec } = require('child_process'); // قد لا تحتاج لهذه الوحدة إذا لم تكن تستخدمها
 
 dotenv.config();
 
@@ -19,7 +18,9 @@ const app = express();
 app.set('trust proxy', 1);
 
 // الأمن والأداء
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false, // تعطيله لتجنب مشاكل مع الواجهة الأمامية إذا كانت في نفس النطاق
+}));
 app.use(compression());
 app.use(cors());
 app.use(express.json());
@@ -73,40 +74,40 @@ app.use(notFound);
 app.use(errorHandler);
 
 // ---------------------------------------------
-// Server Startup Function (التعديل الرئيسي هنا)
+// Server Startup Function
 // ---------------------------------------------
 async function startServer() {
-  // استخدام متغير البيئة PORT الذي توفره Railway، أو 5000 كافتراضي
   const PORT = process.env.PORT || 5000; 
   const HOST = '0.0.0.0';
 
   try {
-    // 1. الاتصال بقاعدة البيانات أولاً والانتظار حتى ينجح
     await prisma.$connect();
     console.log('✅ Connected to database (Neon / PostgreSQL)');
-    await prisma.$queryRaw`SELECT 1`; // اختبار الاتصال للتأكد
-
-    // 2. بدء تشغيل السيرفر بعد نجاح الاتصال
-    app.listen(PORT, HOST, () => {
-      console.log(`Server running in ${process.env.NODE_ENV} mode on ${HOST}:${PORT}`);
-      console.log('Ratnzer Backend (Prisma/Postgres) is Ready! 🚀');
-    });
-
-    // Kick off periodic KD1S order status sync so provider updates flow to users automatically
-    startKd1sStatusSync();
+    
+    // تشغيل السيرفر فقط إذا لم يتم استيراده كـ module (أي ليس في بيئة Vercel)
+    if (require.main === module) {
+      app.listen(PORT, HOST, () => {
+        console.log(`Server running in ${process.env.NODE_ENV} mode on ${HOST}:${PORT}`);
+        console.log('Ratnzer Backend (Prisma/Postgres) is Ready! 🚀');
+      });
+      
+      // بدء مزامنة الطلبات فقط في البيئة المستمرة
+      startKd1sStatusSync();
+    }
 
   } catch (error) {
-    // 3. في حالة فشل الاتصال بقاعدة البيانات، قم بتسجيل الخطأ والخروج من العملية
-    console.error('❌ FATAL ERROR: Database connection failed. Exiting process.');
+    console.error('❌ FATAL ERROR: Database connection failed.');
     console.error(error.message);
-    // الخروج برمز خطأ (1) سيجعل Railway تحاول إعادة التشغيل
-    process.exit(1); 
+    if (require.main === module) {
+      process.exit(1); 
+    }
   }
 }
 
-// ---------------------------------------------
-// بدء العملية
-// ---------------------------------------------
-startServer();
+// بدء المحاولة فقط إذا كان الملف يتم تشغيله مباشرة
+if (require.main === module) {
+  startServer();
+}
 
+// تصدير التطبيق لـ Vercel
 module.exports = app;
