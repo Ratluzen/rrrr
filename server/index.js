@@ -22,7 +22,7 @@ app.use(helmet({
   contentSecurityPolicy: false, // تعطيله لتجنب مشاكل مع الواجهة الأمامية إذا كانت في نفس النطاق
 }));
 app.use(compression());
-app.use(cors());
+app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], allowedHeaders: ['Content-Type', 'Authorization'] }));
 app.use(express.json());
 // ✅ PayTabs (and some gateways) may POST application/x-www-form-urlencoded
 app.use(express.urlencoded({ extended: true }));
