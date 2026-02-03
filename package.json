@@ -22,14 +22,10 @@
     "@capacitor/filesystem": "^6.0.0",
     "@capacitor/push-notifications": "^6.0.3",
     "@capacitor/share": "^6.0.4",
+    "@prisma/client": "^5.10.2",
     "@types/axios": "^0.14.4",
     "@types/html2canvas": "^1.0.0",
     "axios": "^1.13.2",
-    "html2canvas": "^1.4.1",
-    "lucide-react": "^0.344.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "@prisma/client": "^5.10.2",
     "bcryptjs": "^2.4.3",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
@@ -38,11 +34,16 @@
     "express-async-handler": "^1.2.0",
     "express-rate-limit": "^7.1.5",
     "express-validator": "^7.0.1",
+    "firebase": "^12.8.0",
     "helmet": "^7.1.0",
+    "html2canvas": "^1.4.1",
     "jsonwebtoken": "^9.0.2",
+    "lucide-react": "^0.344.0",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@capacitor/cli": "^6.0.0",
@@ -51,9 +52,9 @@
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.38",
+    "prisma": "^5.10.2",
     "tailwindcss": "^3.4.3",
     "typescript": "^5.2.2",
-    "vite": "^5.2.0",
-    "prisma": "^5.10.2"
+    "vite": "^5.2.0"
   }
 }

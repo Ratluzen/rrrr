@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Mail, Phone, User, Lock, Eye, EyeOff, ArrowRight, ShieldCheck } from 'lucide-react';
+import { X, Mail, Phone, User, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, Chrome } from 'lucide-react';
+import { signInWithGoogle } from '../services/firebase';
 import { AppTerms } from '../types';
 import { authService } from '../services/api'; // ✅ هذا هو المسار الصحيح
 
@@ -55,6 +56,21 @@ const LoginModal: React.FC<Props> = ({ isOpen, onClose, onLogin, terms }) => {
   const [showFullTerms, setShowFullTerms] = useState(false);
 
   if (!isOpen) return null;
+
+  const handleGoogleLogin = async () => {
+    try {
+      const { idToken } = await signInWithGoogle();
+      const res = await authService.googleLogin(idToken);
+      const token = (res as any)?.data?.token;
+      if (token) {
+        localStorage.setItem('token', token);
+        onLogin({ isRegister: false });
+      }
+    } catch (error: any) {
+      console.error(error);
+      alert('فشل تسجيل الدخول عبر جوجل');
+    }
+  };
 
   const handleSubmit = async () => {
     // Validation
@@ -182,6 +198,20 @@ const LoginModal: React.FC<Props> = ({ isOpen, onClose, onLogin, terms }) => {
                     </div>
 
                     {/* Method Switcher */}
+                    <button 
+                        onClick={handleGoogleLogin}
+                        className="w-full mb-4 bg-white hover:bg-gray-100 text-black font-bold py-3 rounded-xl shadow-md active:scale-95 transition-all flex items-center justify-center gap-3 text-sm"
+                    >
+                        <Chrome size={18} className="text-red-500" />
+                        <span>متابعة باستخدام جوجل</span>
+                    </button>
+
+                    <div className="flex items-center gap-3 mb-4 shrink-0">
+                        <div className="flex-1 h-[1px] bg-gray-800"></div>
+                        <span className="text-[10px] text-gray-500 font-bold">أو</span>
+                        <div className="flex-1 h-[1px] bg-gray-800"></div>
+                    </div>
+
                     <div className="bg-[#13141f] p-1.5 rounded-xl flex mb-6 border border-gray-700/50 shrink-0">
                         <button 
                             onClick={() => setMethod('email')}

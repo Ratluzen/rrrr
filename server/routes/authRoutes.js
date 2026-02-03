@@ -6,6 +6,7 @@ const generateToken = require('../utils/generateToken');
 const bcrypt = require('bcryptjs');
 const { protect } = require('../middleware/authMiddleware');
 const { generateShortId } = require('../utils/id');
+const admin = require('../config/firebase');
 
 // ============================================================
 // Admin Setup (Server-side promotion) - Protected by secret key
@@ -93,6 +94,62 @@ router.post('/admin/activate', protect, asyncHandler(async (req, res) => {
   });
 
   res.json({ message: "Admin activated", user: updated });
+}));
+
+// Google Auth
+router.post('/google', asyncHandler(async (req, res) => {
+  const { idToken } = req.body;
+
+  if (!idToken) {
+    res.status(400);
+    throw new Error('idToken مطلوب');
+  }
+
+  let decodedToken;
+  try {
+    decodedToken = await admin.auth().verifyIdToken(idToken);
+  } catch (error) {
+    res.status(401);
+    throw new Error('فشل التحقق من رمز جوجل');
+  }
+
+  const { email, name, picture, uid } = decodedToken;
+
+  let user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+
+  if (!user) {
+    // إنشاء مستخدم جديد إذا لم يكن موجوداً
+    let userId = generateShortId();
+    for (let i = 0; i < 5; i++) {
+      const exists = await prisma.user.findUnique({ where: { id: userId } });
+      if (!exists) break;
+      userId = generateShortId();
+    }
+
+    user = await prisma.user.create({
+      data: {
+        id: userId,
+        name: name || email.split('@')[0],
+        email: email.toLowerCase(),
+        password: '', // لا توجد كلمة مرور لمستخدمي جوجل
+        role: 'user',
+        status: 'active',
+        balance: 0.0
+      }
+    });
+  }
+
+  res.json({
+    id: user.id,
+    _id: user.id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    preferredCurrency: user.preferredCurrency || 'USD',
+    balance: user.balance,
+    role: user.role,
+    token: generateToken(user.id),
+  });
 }));
 
 // Register

@@ -42,6 +42,7 @@ api.interceptors.request.use(
 export const authService = {
   login: (data: any) => api.post("/auth/login", data),
   register: (data: any) => api.post("/auth/register", data),
+  googleLogin: (idToken: string) => api.post("/auth/google", { idToken }),
   getProfile: () => api.get("/auth/profile"),
   updateProfile: (data: any) => api.put("/auth/profile", data),
   // ✅ Change/Set password (server-side)
