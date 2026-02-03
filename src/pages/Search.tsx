@@ -117,46 +117,7 @@ const SearchPage: React.FC<Props> = ({ setView, formatPrice, products, categorie
         </div>
       </div>
 
-      <div className="px-4 mb-2 space-y-4">
-        <div>
-          <h3 className="text-gray-400 text-xs font-bold mb-2 text-right">التصنيف</h3>
-          <div className="flex gap-2 overflow-x-auto no-scrollbar">
-            {uiCategories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => selectCategory(cat.id)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors border flex items-center gap-2 ${
-                  selectedCategory === cat.id
-                    ? 'bg-yellow-400 text-black border-yellow-400'
-                    : 'bg-[#242636] text-gray-300 border-gray-700 hover:border-gray-500'
-                }`}
-              >
-                <cat.icon size={14} />
-                {cat.name}
-              </button>
-            ))}
-          </div>
-        </div>
 
-        <div>
-          <h3 className="text-gray-400 text-xs font-bold mb-2 text-right">السعر</h3>
-          <div className="flex gap-2 overflow-x-auto no-scrollbar">
-            {priceOptions.map((option) => (
-              <button
-                key={option.id}
-                onClick={() => setSelectedPrice(option.id)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors border ${
-                  selectedPrice === option.id
-                    ? 'bg-yellow-400 text-black border-yellow-400'
-                    : 'bg-[#242636] text-gray-300 border-gray-700 hover:border-gray-500'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
 
       {/* Results Section */}
       {filteredProducts.length > 0 ? (
