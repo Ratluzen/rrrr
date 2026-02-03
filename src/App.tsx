@@ -578,7 +578,13 @@ useEffect(() => {
         contentService.getAnnouncementsPaged(0, 10).then(res => {
           const data: any = res?.data;
           const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
-          setAnnouncements(items);
+          // Mark items as read if they are older than or equal to the last seen ID
+          const currentLastSeen = localStorage.getItem('last_seen_announcement_id') || '';
+          const processedItems = items.map((ann: any) => ({
+            ...ann,
+            isRead: ann.isRead || (currentLastSeen && ann.id <= currentLastSeen)
+          }));
+          setAnnouncements(processedItems);
           setAnnouncementsHasMore(typeof data?.hasMore === 'boolean' ? data.hasMore : (items.length === 10));
         }).catch(() => {}),
         contentService.getTerms().then(res => {
