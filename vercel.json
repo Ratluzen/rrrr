@@ -19,6 +19,16 @@
     {
       "src": "api/index.cjs",
       "use": "@vercel/node"
+    },
+    {
+      "src": "api/sync.cjs",
+      "use": "@vercel/node"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/sync.cjs",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
