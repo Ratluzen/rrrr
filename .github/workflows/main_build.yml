@@ -147,6 +147,7 @@ jobs:
             ${{ steps.sign_apk.outputs.signedReleaseFile }}
             ${{ steps.sign_aab.outputs.signedReleaseFile }}
             web-build-v${{ steps.vars.outputs.version }}.zip
+          # تم تغيير اسم الملف الناتج إلى Ratnzer بناءً على طلبك
           body: |
             ## 🎉 الإصدار ${{ steps.vars.outputs.version }}
             تم بناء وتوقيع الملفات تلقائياً.
@@ -161,7 +162,7 @@ jobs:
       - name: رفع الملفات كـ Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Ratelozn-App-v${{ steps.vars.outputs.version }}
+          name: Ratnzer
           path: |
             ${{ steps.sign_apk.outputs.signedReleaseFile }}
             ${{ steps.sign_aab.outputs.signedReleaseFile }}
