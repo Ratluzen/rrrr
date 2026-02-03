@@ -2,13 +2,13 @@
   "name": "ratelozn-backend",
   "version": "1.0.0",
   "description": "Professional Backend for Ratnzer Services App",
-  "main": "index.js",
+  "main": "index.cjs",
   "engines": {
     "node": "18.x"
   },
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
+    "start": "node index.cjs",
+    "dev": "nodemon index.cjs",
     "postinstall": "prisma generate"
   },
   "dependencies": {
