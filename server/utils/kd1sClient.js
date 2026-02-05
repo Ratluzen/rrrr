@@ -35,7 +35,7 @@ const normalizeProviderStatus = (status) => {
   const value = String(status).toLowerCase();
 
   if (
-    ['completed', 'complete', 'success', 'finished', 'done', 'delivered'].some((k) =>
+    ['completed', 'complete', 'success', 'finished', 'done', 'delivered', 'partial'].some((k) =>
       value.includes(k)
     )
   ) {
@@ -44,6 +44,10 @@ const normalizeProviderStatus = (status) => {
 
   if (['cancelled', 'canceled', 'failed', 'error', 'rejected', 'refunded'].some((k) => value.includes(k))) {
     return 'cancelled';
+  }
+  
+  if (['processing', 'inprogress', 'in_progress', 'pending'].some((k) => value.includes(k))) {
+    return 'pending';
   }
 
   return null;

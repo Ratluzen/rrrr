@@ -28,7 +28,7 @@
   "crons": [
     {
       "path": "/api/sync.cjs",
-      "schedule": "*/5 * * * *"
+      "schedule": "* * * * *"
     }
   ]
 }

@@ -14,7 +14,7 @@ const findPendingProviderOrders = async (batchSize) => {
   return prisma.order.findMany({
     where: {
       providerOrderId: { not: null },
-      status: { in: ['pending'] },
+      status: { in: ['pending', 'processing', 'inprogress', 'in_progress'] },
       providerName: { in: ['KD1S', 'kd1s'] },
     },
     orderBy: { createdAt: 'desc' },
@@ -35,8 +35,19 @@ const syncOnce = async () => {
       try {
         const statusResult = await getOrderStatus(order.providerOrderId);
         const nextStatus = statusResult.normalizedStatus;
+        const providerStatus = statusResult.providerStatus;
 
-        if (!nextStatus || nextStatus === order.status) continue;
+        // تحديث الحالة إذا تغيرت أو إذا كانت الحالة من المزود هي "processing" ونحن لا نزال في "pending"
+        const isStatusChanged = nextStatus && nextStatus !== order.status;
+        const isProviderProcessing = providerStatus && 
+          ['processing', 'inprogress', 'in_progress', 'pending'].includes(String(providerStatus).toLowerCase()) && 
+          order.status === 'pending';
+
+        if (!isStatusChanged && !isProviderProcessing) continue;
+
+        // إذا كان المزود بدأ المعالجة، نحدث الحالة إلى 'processing' (إذا كانت مدعومة) أو نبقيها 'pending'
+        // لكن الأهم هو تحديث الحالات النهائية (completed, cancelled)
+        if (!nextStatus) continue;
 
         const updated = await prisma.order.update({
           where: { id: order.id },
