@@ -4,6 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
 
 dotenv.config();
 
@@ -60,12 +61,29 @@ app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
 
 // ---------------------------------------------
-// ✅ Root Route (لـ Health Check الافتراضي على '/')
+// ✅ تقديم ملفات واجهة الويب (Frontend Static Files)
 // ---------------------------------------------
-app.get('/', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    message: 'Ratnzer Backend is running',
+// نقوم بتحديد مسار مجلد البناء (dist)
+const distPath = path.join(__dirname, '../dist');
+
+// تقديم الملفات الثابتة من مجلد dist
+app.use(express.static(distPath));
+
+// توجيه أي طلب لا يبدأ بـ /api إلى ملف index.html الخاص بالواجهة
+app.get('*', (req, res, next) => {
+  // إذا كان الطلب يبدأ بـ /api، نتركه يمر للميدل وير الخاص بالأخطاء
+  if (req.path.startsWith('/api')) {
+    return next();
+  }
+  // لغير مسارات الـ API، نرسل ملف الواجهة الرئيسي
+  res.sendFile(path.join(distPath, 'index.html'), (err) => {
+    if (err) {
+      // إذا لم يتم العثور على ملف index.html (لم يتم البناء بعد)، نرجع رسالة الحالة القديمة
+      res.status(200).json({
+        status: 'ok',
+        message: 'Ratnzer Backend is running (Frontend not built yet)',
+      });
+    }
   });
 });
 
