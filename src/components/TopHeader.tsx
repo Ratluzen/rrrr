@@ -78,6 +78,7 @@ const TopHeader: React.FC<Props> = ({
              </button>
          </div>
       </div>
+    </div>
   );
 };
 
