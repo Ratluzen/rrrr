@@ -284,10 +284,10 @@ const Home: React.FC<Props> = ({
       {/* Hero Slider Section */}
       <div className="px-4">
         {viewBanners.length === 0 ? (
-          <div className="w-full h-44 rounded-2xl relative overflow-hidden shadow-lg border border-gray-800 bg-[#242636] animate-pulse" />
+          <div className="w-full aspect-[21/9] rounded-2xl relative overflow-hidden shadow-lg border border-gray-800 bg-[#242636] animate-pulse" />
         ) : (
           <>
-            <div className="w-full h-44 rounded-2xl relative overflow-hidden shadow-lg border border-gray-800">
+            <div className="w-full aspect-[21/9] rounded-2xl relative overflow-hidden shadow-lg border border-gray-800">
               <div
                 ref={scrollRef}
                 onScroll={handleScroll}
@@ -416,7 +416,7 @@ const Home: React.FC<Props> = ({
         </div>
 
         {/* Grid Layout - 3 Columns */}
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           {filteredProducts.length > 0 ? (
             filteredProducts.map((product: any) => (
               <ProductCard
@@ -427,7 +427,7 @@ const Home: React.FC<Props> = ({
               />
             ))
           ) : isRefreshing || (!hasCachedData && viewProducts.length === 0) ? (
-            <div className="col-span-full grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+            <div className="col-span-3 grid grid-cols-3 gap-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="h-36 rounded-2xl bg-[#242636] border border-gray-800 animate-pulse" />
               ))}
