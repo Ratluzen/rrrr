@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "start": "node server/index.cjs",
     "postinstall": "prisma generate --schema=./server/prisma/schema.prisma",
+    "heroku-postbuild": "npm run build",
     "android:init": "cap add android",
     "android:build": "npm run build && cap sync android",
     "android:open": "cap open android",
