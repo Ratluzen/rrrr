@@ -2413,8 +2413,8 @@ useEffect(() => {
   }
 
   return (
-    <div className="flex justify-center absolute inset-0 bg-[#000000] overflow-hidden">
-      <div className="w-full h-full bg-[#13141f] text-white font-cairo sm:max-w-[430px] sm:h-[900px] sm:my-auto sm:rounded-[3rem] sm:border-[8px] sm:border-[#2d2d2d] shadow-2xl relative overflow-hidden ring-1 ring-white/10 flex flex-col">
+    <div className="flex justify-center min-h-screen bg-[#000000]">
+      <div className="w-full max-w-[430px] bg-[#13141f] text-white font-cairo shadow-2xl relative flex flex-col min-h-screen">
 
         {/* PayTabs processing overlay */}
         {paytabsProcessing && (
@@ -2466,7 +2466,7 @@ useEffect(() => {
         {/* Scrollable Content Area */}
         <div 
           key={currentView} // Force scroll reset on view change
-          className={`flex-1 overflow-y-auto no-scrollbar scroll-smooth ${currentView !== View.ADMIN ? 'pb-24 pt-14' : ''}`}
+          className={`flex-1 overflow-y-auto no-scrollbar scroll-smooth ${currentView !== View.ADMIN ? 'pb-20 pt-14' : ''}`}
         >
           <ErrorBoundary onReset={() => setCurrentView(View.HOME)}>{renderView()}</ErrorBoundary>
         </div>
