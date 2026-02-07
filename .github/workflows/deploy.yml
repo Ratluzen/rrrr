@@ -58,7 +58,11 @@ jobs:
           npm run update-version || echo "⚠️ تنبيه: حدثت مشكلة بسيطة في تحديث بعض ملفات التكوين، ولكن سنستمر في البناء."
 
       - name: Build
-        run: npm run build
+        run: |
+          # مسح أي ملفات بناء قديمة لضمان تحديث الإصدار
+          rm -rf dist
+          # بناء المشروع مع تمرير رقم الإصدار كمتغير بيئة لـ Vite إذا لزم الأمر
+          VITE_APP_VERSION=${{ steps.vars.outputs.version }} npm run build
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
