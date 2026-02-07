@@ -49,12 +49,11 @@ const TopHeader: React.FC<Props> = ({
          )}
 
          {/* Center: Simple Text Logo */}
-<div className="flex items-center justify-center gap-2 cursor-pointer" onClick={() => setView(View.HOME)}>
-            <img src="/icon.png" alt="Logo" className="w-8 h-8 rounded-lg shadow-lg" />
-            <h1 className="text-xl font-bold text-yellow-400 drop-shadow-sm tracking-wide hidden sm:block">
-              خدمات راتنزر
-            </h1>
-         </div>
+<div className="flex flex-col items-center justify-center cursor-pointer" onClick={() => setView(View.HOME)}>
+	            <h1 className="text-xl font-bold text-yellow-400 drop-shadow-sm tracking-wide">
+	              خدمات راتنزر
+	            </h1>
+	         </div>
 
          {/* Left: Search & Notifications (Last in RTL) */}
          <div className="flex items-center gap-2">
