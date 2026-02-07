@@ -57,19 +57,29 @@ jobs:
         env:
           VITE_APP_VERSION: ${{ steps.vars.outputs.version }}
 
-      - name: Deploy to Heroku via Git Push
+      - name: Deploy to Heroku via Git
         env:
           HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+          HEROKU_EMAIL: ${{ secrets.HEROKU_EMAIL }}
         run: |
+          # إعداد المصادقة باستخدام .netrc
+          cat > ~/.netrc <<EOF
+          machine git.heroku.com
+            login $HEROKU_EMAIL
+            password $HEROKU_API_KEY
+          machine api.heroku.com
+            login $HEROKU_EMAIL
+            password $HEROKU_API_KEY
+          EOF
+          
           # إعداد الهوية لـ Git
           git config --global user.email "github-actions@github.com"
           git config --global user.name "GitHub Actions"
           
-          # إضافة التغييرات الناتجة عن تحديث الإصدار والبناء (إذا لزم الأمر)
-          # ملاحظة: نحن نقوم بعمل commit محلي فقط للدفع إلى heroku
+          # إضافة التغييرات الناتجة عن تحديث الإصدار والبناء
           git add .
           git commit -m "chore: build and version update for deployment [skip ci]" || echo "No changes to commit"
           
-          # الدفع إلى Heroku
-          # استخدام الـ API Key للمصادقة في رابط الـ remote
-          git push -f https://:$HEROKU_API_KEY@git.heroku.com/ratnzer-services.git HEAD:refs/heads/main
+          # إضافة Heroku Remote والدفع
+          git remote add heroku https://git.heroku.com/ratnzer-services.git
+          git push -f heroku HEAD:main
