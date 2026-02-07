@@ -669,7 +669,7 @@ const Profile: React.FC<Props> = ({ setView, currentCurrency, onCurrencyChange, 
        {showCurrencyModal && (
          <div className="fixed inset-0 z-[60] flex items-end justify-center">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowCurrencyModal(false)}></div>
-            <div className="bg-[#1f212e] w-full max-w-md rounded-t-3xl p-6 relative z-10 animate-slide-up border-t border-gray-700 max-h-[85vh] flex flex-col">
+            <div className="bg-[#1f212e] w-full max-w-md rounded-t-3xl p-6 pb-28 relative z-10 animate-slide-up border-t border-gray-700 max-h-[85vh] flex flex-col">
                <h2 className="text-xl font-bold mb-6 text-center text-white">العملة</h2>
                <div className="overflow-y-auto no-scrollbar space-y-2 mb-4 flex-1">
                  {currencies.map((currency) => (
