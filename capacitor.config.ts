@@ -2,7 +2,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   version: '3.3.6',
-  appId: 'com.ratelozn.services',
+  appId: 'com.ratnzer.app',
   appName: 'خدمات راتنزر',
   webDir: 'dist',
   server: {

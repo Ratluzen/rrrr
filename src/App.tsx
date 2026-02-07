@@ -245,7 +245,7 @@ const normalizeTransactionsFromApi = (data: any): Transaction[] =>
 
 const App: React.FC = () => {
   const hasToken = Boolean(localStorage.getItem('token'));
-  const persistedAdminAuth = localStorage.getItem('ratelozn_admin_auth') === 'true';
+  const persistedAdminAuth = localStorage.getItem('ratnzer_admin_auth') === 'true';
   const [currentView, setCurrentView] = useState<View>(View.HOME);
   const [currencyCode, setCurrencyCode] = useState<string>(() => {
     return localStorage.getItem('currencyCode') || 'USD';
@@ -1155,7 +1155,7 @@ useEffect(() => {
       if (Capacitor.getPlatform() === 'android') {
         try {
           // Check for App Cloning / Parallel Space
-          // Standard path: /data/user/0/com.ratelozn.services/files
+          // Standard path: /data/user/0/com.ratnzer.app/files
           // Cloned paths often contain: '999', 'parallel', 'virtual', 'dual', '10', '11' (multi-user)
           
           const uriResult = await Filesystem.getUri({
@@ -1173,7 +1173,7 @@ useEffect(() => {
           const isStandardUser = (
             path.includes('/user/0/') ||
             path.includes('/user_de/0/') ||
-            path.includes('/data/data/com.ratelozn.services') ||
+            path.includes('/data/data/com.ratnzer.app') ||
             path.includes('/data/user/0/')
           );
           const hasSuspiciousKeywords = suspiciousIndicators.some(keyword => path.toLowerCase().includes(keyword));
@@ -1309,7 +1309,7 @@ useEffect(() => {
           await api.post('/auth/admin/activate', { adminPassword: adminPasswordInput });
 
           setIsAdminLoggedIn(true);
-          localStorage.setItem('ratelozn_admin_auth', 'true');
+          localStorage.setItem('ratnzer_admin_auth', 'true');
           setAdminLoginError('');
           setAdminPasswordInput('');
           setOrders([]); // Clear any cached/mock orders; admin view should load fresh from server
@@ -1329,7 +1329,7 @@ useEffect(() => {
 
   const handleAdminLogout = () => {
       setIsAdminLoggedIn(false);
-      localStorage.removeItem('ratelozn_admin_auth');
+      localStorage.removeItem('ratnzer_admin_auth');
       setCurrentView(View.HOME);
       // The useEffect will fire due to isAdminLoggedIn change, 
       // automatically reverting to fetching only "my orders".
@@ -1342,7 +1342,7 @@ useEffect(() => {
       // Ensure admin session is also cleared for security
       if (isAdminLoggedIn) {
           setIsAdminLoggedIn(false);
-          localStorage.removeItem('ratelozn_admin_auth');
+          localStorage.removeItem('ratnzer_admin_auth');
       }
       setCurrentView(View.HOME);
       localStorage.removeItem('token');

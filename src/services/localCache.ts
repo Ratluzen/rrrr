@@ -9,7 +9,7 @@
  */
 type CacheEnvelope<T> = { ts: number; data: T };
 
-const PREFIX = 'ratelozn_cache_v1:';
+const PREFIX = 'ratnzer_cache_v1:';
 
 function now() {
   return Date.now();
