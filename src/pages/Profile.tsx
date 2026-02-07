@@ -693,7 +693,7 @@ const Profile: React.FC<Props> = ({ setView, currentCurrency, onCurrencyChange, 
                <div className="w-9"></div>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 pb-24">
                <div className="text-center mb-6">
                   <div className="w-16 h-16 bg-[#242636] rounded-full flex items-center justify-center mx-auto mb-3 border border-gray-700 shadow-lg">
                       <HelpCircle size={32} className="text-yellow-400" />
@@ -746,7 +746,7 @@ const Profile: React.FC<Props> = ({ setView, currentCurrency, onCurrencyChange, 
                    <button onClick={() => setShowTermsModal(false)} className="p-2 bg-[#242636] rounded-xl text-gray-400 hover:text-white"><X size={20} /></button>
                    <h2 className="text-lg font-bold text-white">الشروط والأحكام</h2><div className="w-9"></div>
                </div>
-               <div className="flex-1 overflow-y-auto p-6 text-gray-300">
+               <div className="flex-1 overflow-y-auto p-6 text-gray-300 pb-24">
                    <div className="space-y-6 text-right">
                        <div className="text-center mb-6"><h3 className="text-xl font-bold text-yellow-400 mb-2">الشروط والأحكام</h3></div>
                        {/* Display Full Arabic Content with whitespace preserved */}
