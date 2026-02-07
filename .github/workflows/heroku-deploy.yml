@@ -57,11 +57,19 @@ jobs:
         env:
           VITE_APP_VERSION: ${{ steps.vars.outputs.version }}
 
-      - name: Deploy to Heroku
-        uses: akhileshns/heroku-deploy@v3.13.15
-        with:
-          heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
-          heroku_app_name: "ratnzer-services" # تم استخراجه من رابط API الخاص بك
-          heroku_email: ${{ secrets.HEROKU_EMAIL }}
-          # نحن ندفع الفرع الحالي الذي يحتوي على الملفات المحدثة
-          branch: "main"
+      - name: Deploy to Heroku via Git Push
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+        run: |
+          # إعداد الهوية لـ Git
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions"
+          
+          # إضافة التغييرات الناتجة عن تحديث الإصدار والبناء (إذا لزم الأمر)
+          # ملاحظة: نحن نقوم بعمل commit محلي فقط للدفع إلى heroku
+          git add .
+          git commit -m "chore: build and version update for deployment [skip ci]" || echo "No changes to commit"
+          
+          # الدفع إلى Heroku
+          # استخدام الـ API Key للمصادقة في رابط الـ remote
+          git push -f https://:$HEROKU_API_KEY@git.heroku.com/ratnzer-services.git HEAD:refs/heads/main
