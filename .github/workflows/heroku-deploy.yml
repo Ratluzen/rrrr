@@ -1,0 +1,67 @@
+name: Deploy to Heroku
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+      - '*.*.*'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: تحديد رقم الإصدار
+        id: vars
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            VERSION=${TAG_NAME#v}
+          else
+            # جلب أحدث إصدار من Releases إذا لم يكن الحدث هو Tag
+            LATEST_RELEASE=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || echo "")
+            if [ -n "$LATEST_RELEASE" ]; then
+              VERSION=${LATEST_RELEASE#v}
+            else
+              VERSION=$(node -p "require('./package.json').version")
+            fi
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "🚀 الإصدار المستخدم لـ Heroku: $VERSION"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: تحديث رقم الإصدار في الملفات
+        env:
+          APP_VERSION: ${{ steps.vars.outputs.version }}
+        run: npm run update-version
+
+      - name: Build Project
+        run: npm run build
+        env:
+          VITE_APP_VERSION: ${{ steps.vars.outputs.version }}
+
+      - name: Deploy to Heroku
+        uses: akhileshns/heroku-deploy@v3.13.15
+        with:
+          heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+          heroku_app_name: "ratnzer-services" # تم استخراجه من رابط API الخاص بك
+          heroku_email: ${{ secrets.HEROKU_EMAIL }}
+          # نحن ندفع الفرع الحالي الذي يحتوي على الملفات المحدثة
+          branch: "main"
