@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X, Mail, Phone, User, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, Chrome } from 'lucide-react';
-import { signInWithGoogle } from '../services/firebase';
+import { X, Mail, Phone, User, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, Chrome, Facebook } from 'lucide-react';
+import { signInWithGoogle, signInWithFacebook } from '../services/firebase';
 import { AppTerms } from '../types';
 import { authService } from '../services/api'; // ✅ هذا هو المسار الصحيح
 
@@ -69,6 +69,21 @@ const LoginModal: React.FC<Props> = ({ isOpen, onClose, onLogin, terms }) => {
     } catch (error: any) {
       console.error(error);
       alert('فشل تسجيل الدخول عبر جوجل');
+    }
+  };
+
+  const handleFacebookLogin = async () => {
+    try {
+      const { idToken } = await signInWithFacebook();
+      const res = await authService.facebookLogin(idToken);
+      const token = (res as any)?.data?.token;
+      if (token) {
+        localStorage.setItem('token', token);
+        onLogin({ isRegister: false });
+      }
+    } catch (error: any) {
+      console.error(error);
+      alert('فشل تسجيل الدخول عبر فيسبوك');
     }
   };
 
@@ -197,14 +212,23 @@ const LoginModal: React.FC<Props> = ({ isOpen, onClose, onLogin, terms }) => {
                         </p>
                     </div>
 
-                    {/* Method Switcher */}
-                    <button 
-                        onClick={handleGoogleLogin}
-                        className="w-full mb-4 bg-white hover:bg-gray-100 text-black font-bold py-3 rounded-xl shadow-md active:scale-95 transition-all flex items-center justify-center gap-3 text-sm"
-                    >
-                        <Chrome size={18} className="text-red-500" />
-                        <span>متابعة باستخدام جوجل</span>
-                    </button>
+                    {/* Social Login Buttons */}
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                        <button 
+                            onClick={handleGoogleLogin}
+                            className="bg-white hover:bg-gray-100 text-black font-bold py-3 rounded-xl shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 text-xs border border-gray-200"
+                        >
+                            <Chrome size={18} className="text-[#DB4437]" />
+                            <span>جوجل</span>
+                        </button>
+                        <button 
+                            onClick={handleFacebookLogin}
+                            className="bg-[#1877F2] hover:bg-[#166fe5] text-white font-bold py-3 rounded-xl shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 text-xs"
+                        >
+                            <Facebook size={18} fill="currentColor" />
+                            <span>فيسبوك</span>
+                        </button>
+                    </div>
 
                     <div className="flex items-center gap-3 mb-4 shrink-0">
                         <div className="flex-1 h-[1px] bg-gray-800"></div>

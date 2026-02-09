@@ -152,6 +152,64 @@ router.post('/google', asyncHandler(async (req, res) => {
   });
 }));
 
+// Facebook Auth
+router.post('/facebook', asyncHandler(async (req, res) => {
+  const { idToken } = req.body;
+
+  if (!idToken) {
+    res.status(400);
+    throw new Error('idToken مطلوب');
+  }
+
+  let decodedToken;
+  try {
+    decodedToken = await admin.auth().verifyIdToken(idToken);
+  } catch (error) {
+    res.status(401);
+    throw new Error('فشل التحقق من رمز فيسبوك');
+  }
+
+  const { email, name, picture, uid } = decodedToken;
+
+  // فيسبوك قد لا يعيد بريداً إلكترونياً في بعض الحالات، سنستخدم UID كبديل إذا لزم الأمر
+  const userEmail = email ? email.toLowerCase() : `${uid}@facebook.com`;
+
+  let user = await prisma.user.findUnique({ where: { email: userEmail } });
+
+  if (!user) {
+    let userId = generateShortId();
+    for (let i = 0; i < 5; i++) {
+      const exists = await prisma.user.findUnique({ where: { id: userId } });
+      if (!exists) break;
+      userId = generateShortId();
+    }
+
+    user = await prisma.user.create({
+      data: {
+        id: userId,
+        name: name || userEmail.split('@')[0],
+        email: userEmail,
+        password: '', 
+        role: 'user',
+        status: 'active',
+        balance: 0.0
+      }
+    });
+  }
+
+  res.json({
+    id: user.id,
+    _id: user.id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    preferredCurrency: user.preferredCurrency || 'USD',
+    balance: user.balance,
+    role: user.role,
+    token: generateToken(user.id),
+  });
+}));
+
 // Register
 router.post('/register', asyncHandler(async (req, res) => {
   const { name, email, phone, password } = req.body;

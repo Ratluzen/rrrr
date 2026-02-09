@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup } from "firebase/auth";
 
 // ✅ استخدام المتغيرات البيئية لضمان الأمان والمرونة
 // ✅ استخدام المتغيرات البيئية مع التحقق لتجنب الانهيار
@@ -27,6 +27,7 @@ try {
 
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+export const facebookProvider = new FacebookAuthProvider();
 
 export const signInWithGoogle = async () => {
   try {
@@ -35,6 +36,17 @@ export const signInWithGoogle = async () => {
     return { user: result.user, idToken };
   } catch (error) {
     console.error("Error signing in with Google", error);
+    throw error;
+  }
+};
+
+export const signInWithFacebook = async () => {
+  try {
+    const result = await signInWithPopup(auth, facebookProvider);
+    const idToken = await result.user.getIdToken();
+    return { user: result.user, idToken };
+  } catch (error) {
+    console.error("Error signing in with Facebook", error);
     throw error;
   }
 };
