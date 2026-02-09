@@ -65,10 +65,12 @@ const LoginModal: React.FC<Props> = ({ isOpen, onClose, onLogin, terms }) => {
       if (token) {
         localStorage.setItem('token', token);
         onLogin({ isRegister: false });
+      } else {
+        alert('فشل الحصول على رمز الدخول من السيرفر');
       }
     } catch (error: any) {
       console.error(error);
-      alert('فشل تسجيل الدخول عبر جوجل');
+      alert(error?.response?.data?.message || 'فشل تسجيل الدخول عبر جوجل - تأكد من اتصالك بالإنترنت');
     }
   };
 
@@ -80,10 +82,12 @@ const LoginModal: React.FC<Props> = ({ isOpen, onClose, onLogin, terms }) => {
       if (token) {
         localStorage.setItem('token', token);
         onLogin({ isRegister: false });
+      } else {
+        alert('فشل الحصول على رمز الدخول من السيرفر');
       }
     } catch (error: any) {
       console.error(error);
-      alert('فشل تسجيل الدخول عبر فيسبوك');
+      alert(error?.response?.data?.message || 'فشل تسجيل الدخول عبر فيسبوك - تأكد من اتصالك بالإنترنت');
     }
   };
 
