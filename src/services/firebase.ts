@@ -16,14 +16,19 @@ const firebaseConfig = {
 // منع الانهيار في حالة عدم وجود مفتاح API
 let app;
 try {
-  if (!firebaseConfig.apiKey) {
+  if (!firebaseConfig.apiKey && !Capacitor.isNativePlatform()) {
     console.warn("Firebase API Key is missing. Firebase features will be disabled.");
     app = initializeApp({ ...firebaseConfig, apiKey: "dummy-key" }); 
   } else {
+    // في حالة الهاتف، إذا كان المفتاح مفقوداً، قد يكون هذا سبب الكراش
     app = initializeApp(firebaseConfig);
   }
-} catch (error) {
+} catch (error: any) {
   console.error("Firebase initialization failed:", error);
+  // إذا كنا على الهاتف وفشل التهيئة، نرمي خطأ ليظهر في شاشة الخطأ الجديدة
+  if (Capacitor.isNativePlatform()) {
+    throw new Error(`Firebase Init Failed: ${error?.message || 'Unknown error'}`);
+  }
 }
 
 export const auth = getAuth(app);
