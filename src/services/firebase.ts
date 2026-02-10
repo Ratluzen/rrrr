@@ -1,5 +1,14 @@
-import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup } from "firebase/auth";
+import { initializeApp, getApp, getApps } from "firebase/app";
+import { 
+  getAuth, 
+  GoogleAuthProvider, 
+  FacebookAuthProvider, 
+  signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
+  signInWithCredential,
+  browserPopupRedirectResolver
+} from "firebase/auth";
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { Capacitor } from '@capacitor/core';
 
@@ -13,59 +22,109 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || ""
 };
 
-// منع الانهيار في حالة عدم وجود مفتاح API
-let app;
-try {
-  if (!firebaseConfig.apiKey) {
-    console.warn("Firebase API Key is missing. Firebase features will be disabled.");
-    app = initializeApp({ ...firebaseConfig, apiKey: "dummy-key" }); // تهيئة وهمية لمنع كسر التصدير
-  } else {
-    app = initializeApp(firebaseConfig);
-  }
-} catch (error) {
-  console.error("Firebase initialization failed:", error);
-}
-
+// تهيئة Firebase بشكل آمن
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
+
+// Providers
 export const googleProvider = new GoogleAuthProvider();
 export const facebookProvider = new FacebookAuthProvider();
 
+/**
+ * معالجة تسجيل الدخول عبر Google
+ */
 export const signInWithGoogle = async () => {
   try {
     if (Capacitor.isNativePlatform()) {
-      // ✅ استخدام المصادقة الأصلية لتطبيقات الهاتف (Android/iOS)
+      // ✅ للهاتف: استخدام المصادقة الأصلية عبر Capacitor Plugin
       const result = await FirebaseAuthentication.signInWithGoogle();
-      // في المكون @capacitor-firebase/authentication، الـ idToken موجود داخل credential
+      
+      // تحويل النتيجة إلى Firebase Credential لتسجيل الدخول في Firebase SDK
       const idToken = result.credential?.idToken;
-      return { user: result.user, idToken };
+      if (!idToken) throw new Error("Google idToken is missing from native provider");
+
+      const credential = GoogleAuthProvider.credential(idToken);
+      const userCredential = await signInWithCredential(auth, credential);
+      
+      return { 
+        user: userCredential.user, 
+        idToken: await userCredential.user.getIdToken() 
+      };
     } else {
-      // ✅ استخدام الويب للمتصفحات
-      const result = await signInWithPopup(auth, googleProvider);
-      const idToken = await result.user.getIdToken();
-      return { user: result.user, idToken };
+      // ✅ للويب: محاولة استخدام Popup أولاً، وإذا فشل (بسبب المتصفح) نستخدم Redirect
+      try {
+        const result = await signInWithPopup(auth, googleProvider, browserPopupRedirectResolver);
+        const idToken = await result.user.getIdToken();
+        return { user: result.user, idToken };
+      } catch (popupError: any) {
+        if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/cancelled-popup-request') {
+          await signInWithRedirect(auth, googleProvider);
+          return { user: null, idToken: null }; // سيتم التعامل معه بعد إعادة التوجيه
+        }
+        throw popupError;
+      }
     }
   } catch (error) {
-    console.error("Error signing in with Google", error);
+    console.error("Error signing in with Google:", error);
     throw error;
   }
 };
 
+/**
+ * معالجة تسجيل الدخول عبر Facebook
+ */
 export const signInWithFacebook = async () => {
   try {
     if (Capacitor.isNativePlatform()) {
-      // ✅ استخدام المصادقة الأصلية لتطبيقات الهاتف (Android/iOS)
+      // ✅ للهاتف: استخدام المصادقة الأصلية عبر Capacitor Plugin
       const result = await FirebaseAuthentication.signInWithFacebook();
-      // في المكون @capacitor-firebase/authentication، الـ idToken موجود داخل credential
-      const idToken = result.credential?.idToken;
-      return { user: result.user, idToken };
+      
+      // تحويل النتيجة إلى Firebase Credential
+      const accessToken = result.credential?.accessToken;
+      if (!accessToken) throw new Error("Facebook accessToken is missing from native provider");
+
+      const credential = FacebookAuthProvider.credential(accessToken);
+      const userCredential = await signInWithCredential(auth, credential);
+      
+      return { 
+        user: userCredential.user, 
+        idToken: await userCredential.user.getIdToken() 
+      };
     } else {
-      // ✅ استخدام الويب للمتصفحات
-      const result = await signInWithPopup(auth, facebookProvider);
+      // ✅ للويب
+      try {
+        const result = await signInWithPopup(auth, facebookProvider, browserPopupRedirectResolver);
+        const idToken = await result.user.getIdToken();
+        return { user: result.user, idToken };
+      } catch (popupError: any) {
+        if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/cancelled-popup-request') {
+          await signInWithRedirect(auth, facebookProvider);
+          return { user: null, idToken: null };
+        }
+        throw popupError;
+      }
+    }
+  } catch (error) {
+    console.error("Error signing in with Facebook:", error);
+    throw error;
+  }
+};
+
+/**
+ * وظيفة للتحقق من نتائج إعادة التوجيه (للويب)
+ */
+export const handleRedirectResult = async () => {
+  if (Capacitor.isNativePlatform()) return null;
+  
+  try {
+    const result = await getRedirectResult(auth);
+    if (result) {
       const idToken = await result.user.getIdToken();
       return { user: result.user, idToken };
     }
+    return null;
   } catch (error) {
-    console.error("Error signing in with Facebook", error);
+    console.error("Error handling redirect result:", error);
     throw error;
   }
 };

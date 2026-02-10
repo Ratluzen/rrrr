@@ -24,6 +24,7 @@ import { App as CapApp } from '@capacitor/app';
 import { PushNotificationSchema, PushNotifications } from '@capacitor/push-notifications';
 import { extractOrdersFromResponse, normalizeOrderFromApi, normalizeOrdersFromApi } from './utils/orders';
 import { generateShortId } from './utils/id';
+import { handleRedirectResult } from './services/firebase';
 
 // ============================================================
 // ✅ Simple localStorage cache helpers (offline-first boot)
@@ -358,6 +359,27 @@ const App: React.FC = () => {
   }, []);
 
   // Track navigation history
+  // Handle Firebase Auth Redirect Result (Web Only)
+  useEffect(() => {
+    const checkRedirect = async () => {
+      if (Capacitor.isNativePlatform()) return;
+      try {
+        const result = await handleRedirectResult();
+        if (result?.idToken) {
+          const res = await authService.googleLogin(result.idToken);
+          const token = (res as any)?.data?.token;
+          if (token) {
+            localStorage.setItem('token', token);
+            window.location.reload();
+          }
+        }
+      } catch (error) {
+        console.error("Redirect auth error:", error);
+      }
+    };
+    checkRedirect();
+  }, []);
+
   useEffect(() => {
     if (navigationHistory.current[navigationHistory.current.length - 1] !== currentView) {
       navigationHistory.current.push(currentView);
