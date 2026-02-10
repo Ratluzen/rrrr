@@ -96,7 +96,7 @@ jobs:
           test -s android/app/google-services.json
 
       - name: Install Capacitor Assets Tool
-        run: npm i -D @capacitor/assets
+        run: npm i -D @capacitor/assets --legacy-peer-deps
 
       - name: Generate Android assets from resources
         run: npx @capacitor/assets generate --android
