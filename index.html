@@ -23,6 +23,31 @@
         overflow-x: hidden;
       }
     </style>
+    <script>
+      // ✅ Early Error Catcher: Catch and save crashes before React even starts
+      (function() {
+        function saveCrash(error, type) {
+          try {
+            const crashData = {
+              message: error.message || String(error),
+              stack: error.stack || 'No stack trace',
+              time: new Date().toISOString(),
+              type: type || 'UncaughtError'
+            };
+            localStorage.setItem('last_app_crash', JSON.stringify(crashData));
+          } catch (e) {}
+        }
+
+        window.onerror = function(msg, url, line, col, error) {
+          saveCrash(error || msg, 'GlobalError');
+          return false;
+        };
+
+        window.onunhandledrejection = function(event) {
+          saveCrash(event.reason, 'UnhandledPromise');
+        };
+      })();
+    </script>
   </head>
   <body class="bg-black">
     <div id="root"></div>
