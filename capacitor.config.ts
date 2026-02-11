@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   appName: 'خدمات راتنزر',
   webDir: 'dist',
   server: {
-    androidScheme: 'https',
+    iosScheme: 'https',
     allowNavigation: [
       'ratnzer-services-bb0a0cce4837.herokuapp.com',
       '*.paytabs.com',
@@ -16,13 +16,16 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      launchShowDuration: 3000,
+      launchShowDuration: 2000,
       launchAutoHide: true,
+      launchFadeOutDuration: 300,
       backgroundColor: "#0f172a",
       androidScaleType: "CENTER_CROP",
-      showSpinner: true,
+      showSpinner: false,
       androidSpinnerStyle: "large",
-      spinnerColor: "#10b981"
+      spinnerColor: "#10b981",
+      splashFullScreen: true,
+      splashImmersive: true
     },
     FirebaseAuthentication: {
       skipNativeAuth: false,
