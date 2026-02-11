@@ -52,7 +52,9 @@ export const signInWithGoogle = async () => {
       
       const result = await FirebaseAuthentication.signInWithGoogle().catch(err => {
         console.error("Native Google Plugin Error:", err);
-        throw new Error(`خطأ في إضافة جوجل: ${err.message || 'تأكد من إعدادات SHA-1 في Firebase'}`);
+        const error = new Error(`خطأ في إضافة جوجل: ${err.message || 'تأكد من إعدادات SHA-1 في Firebase'}`);
+        (error as any).code = err.code || 'plugin_error';
+        throw error;
       });
       
       const idToken = result.credential?.idToken;
@@ -100,7 +102,9 @@ export const signInWithFacebook = async () => {
       
       const result = await FirebaseAuthentication.signInWithFacebook().catch(err => {
         console.error("Native Facebook Plugin Error:", err);
-        throw new Error(`خطأ في إضافة فيسبوك: ${err.message || 'تأكد من معرف التطبيق (App ID) في strings.xml'}`);
+        const error = new Error(`خطأ في إضافة فيسبوك: ${err.message || 'تأكد من معرف التطبيق (App ID) في strings.xml'}`);
+        (error as any).code = err.code || 'plugin_error';
+        throw error;
       });
       
       const accessToken = result.credential?.accessToken;

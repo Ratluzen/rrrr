@@ -379,8 +379,9 @@ const App: React.FC = () => {
               }
             }
           }
-        } catch (error) {
-          console.warn("Non-critical redirect auth error:", error);
+        } catch (error: any) {
+          console.error("Critical redirect auth error:", error);
+          alert(`فشل إكمال تسجيل الدخول بعد العودة: ${error.message || 'خطأ غير معروف'}`);
         }
       };
       void checkRedirect();
