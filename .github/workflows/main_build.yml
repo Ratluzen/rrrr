@@ -112,6 +112,11 @@ jobs:
       - name: Build APK & AAB (Always Release)
         run: |
           cd android
+          # التأكد من وجود ملفات Gradle الأساسية
+          if [ ! -f "gradlew" ]; then
+            echo "⚠️ gradlew missing, attempting to restore..."
+            npx cap update android
+          fi
           chmod +x gradlew
           echo "🏗️ بناء ملف APK (للتثبيت المباشر)..."
           ./gradlew assembleRelease
