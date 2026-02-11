@@ -6,8 +6,7 @@
     <string name="custom_url_scheme">com.ratnzer.app</string>
     
     <!-- Facebook Auth Settings -->
-    <!-- يرجى استبدال هذه القيم بالقيم الحقيقية من لوحة تحكم مطوري فيسبوك -->
-    <string name="facebook_app_id">YOUR_FACEBOOK_APP_ID</string>
-    <string name="fb_login_protocol_scheme">fbYOUR_FACEBOOK_APP_ID</string>
-    <string name="facebook_client_token">YOUR_FACEBOOK_CLIENT_TOKEN</string>
+    <string name="facebook_app_id">2994111874110231</string>
+    <string name="fb_login_protocol_scheme">fb2994111874110231</string>
+    <string name="facebook_client_token">c55884326412a3468d50b1952f047bbd</string>
 </resources>
