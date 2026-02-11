@@ -332,6 +332,8 @@ const App: React.FC = () => {
   }, [inAppNotification]);
 
   useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
     // Handle Hardware Back Button for Android
     const backButtonListener = CapApp.addListener('backButton', async ({ canGoBack }: { canGoBack: boolean }) => {
       if (currentView !== View.HOME) {
