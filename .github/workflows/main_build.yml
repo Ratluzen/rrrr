@@ -100,31 +100,11 @@ jobs:
 
       - name: Initialize Android Platform
         run: |
-          # إذا كان مشروع Android ناقص (مثل غياب gradlew) نعيد توليده مع حفظ تخصيصات تسجيل الدخول
-          NEED_RECREATE=false
+          # لا نحذف مجلد android حتى لا نفقد إعدادات Facebook/Google الأصلية
           if [ ! -d android ]; then
-            NEED_RECREATE=true
-          elif [ ! -f android/gradlew ]; then
-            NEED_RECREATE=true
-          fi
-
-          if [ "$NEED_RECREATE" = true ]; then
-            echo "Android project missing/incomplete. Recreating platform..."
-
-            mkdir -p /tmp/ratnzer-android-backup
-            if [ -d android/app/src/main ]; then
-              cp -R android/app/src/main /tmp/ratnzer-android-backup/main
-            fi
-
-            rm -rf android
             npx cap add android
-
-            if [ -d /tmp/ratnzer-android-backup/main ]; then
-              mkdir -p android/app/src/main
-              cp -R /tmp/ratnzer-android-backup/main/. android/app/src/main/
-            fi
           fi
-
+          
 
       - name: تحديث رقم إصدار Android
         env:
