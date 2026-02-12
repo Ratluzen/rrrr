@@ -35,11 +35,7 @@ cd android && ./gradlew assembleDebug
 ## أين أجد ملف السجل على الهاتف؟
 
 - افتح تطبيق الملفات (File Manager)
-- جرّب أولًا:
-
-`/sdcard/RatnzerDebug/startup-debug.log`
-
-- إذا لم يظهر، جرّب المسار الاحتياطي:
+- اذهب إلى:
 
 `Downloads/RatnzerDebug/startup-debug.log`
 

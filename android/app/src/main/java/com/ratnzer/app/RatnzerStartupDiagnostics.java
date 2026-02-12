@@ -73,7 +73,7 @@ public final class RatnzerStartupDiagnostics {
             : (existing + "\n" + ts + ":" + marker);
 
         String[] lines = next.split("\\n");
-        int keepFrom = Math.max(0, lines.length - 80);
+        int keepFrom = Math.max(0, lines.length - 60);
         StringBuilder sb = new StringBuilder();
         for (int i = keepFrom; i < lines.length; i++) {
             if (sb.length() > 0) sb.append('\n');
@@ -117,8 +117,7 @@ public final class RatnzerStartupDiagnostics {
         }
 
         String startupTrace = prefs.getString(STARTUP_TRACE_KEY, "no startup markers");
-        String internalLogFilePath = getLogFilePath(appContext);
-        String exportedPath = getPublicExportHint(appContext);
+        String logFilePath = getLogFilePath(appContext);
         prefs.edit().remove(LAST_CRASH_KEY).apply();
 
         String fullMessage = previousCrash
@@ -159,7 +158,7 @@ public final class RatnzerStartupDiagnostics {
             writer.write(line);
             writer.flush();
         } catch (IOException ioError) {
-            Log.e(TAG, "Failed to append internal debug file log.", ioError);
+            Log.e(TAG, "Failed to append debug file log.", ioError);
         } finally {
             if (writer != null) {
                 try {
@@ -188,27 +187,7 @@ public final class RatnzerStartupDiagnostics {
                 appendUsingLegacyDownloads(line);
             }
         } catch (Throwable error) {
-            Log.e(TAG, "Failed writing public debug log export in all locations.", error);
-        }
-    }
-
-    private static void appendUsingSdcardRoot(String line) throws IOException {
-        File sdcardRoot = Environment.getExternalStorageDirectory();
-        File folder = new File(sdcardRoot, PUBLIC_SUBDIR);
-        if (!folder.exists() && !folder.mkdirs()) {
-            throw new IOException("Failed to create /sdcard folder: " + folder.getAbsolutePath());
-        }
-
-        File out = new File(folder, LOG_FILE_NAME);
-        FileWriter writer = null;
-        try {
-            writer = new FileWriter(out, true);
-            writer.write(line);
-            writer.flush();
-        } finally {
-            if (writer != null) {
-                writer.close();
-            }
+            Log.e(TAG, "Failed writing public debug log export.", error);
         }
     }
 
