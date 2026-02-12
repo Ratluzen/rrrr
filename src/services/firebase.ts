@@ -59,43 +59,39 @@ const isNative = () => Capacitor.isNativePlatform();
 
 export const signInWithGoogle = async () => {
   try {
-    if (Capacitor.isNativePlatform()) {
-      // ✅ للهاتف: استخدام المصادقة الأصلية عبر Capacitor Plugin
-      console.log("Starting Native Google Sign-In...");
-      
-      const result = await FirebaseAuthentication.signInWithGoogle().catch(err => {
-        console.error("Native Google Plugin Error:", err);
-        throw new Error(`خطأ في إضافة جوجل: ${err.message || 'تأكد من إعدادات SHA-1 في Firebase'}`);
-      });
-      
-      const idToken = result.credential?.idToken;
-      if (!idToken) throw new Error("لم يتم استلام رمز التحقق (idToken) من جوجل. تأكد من ملف google-services.json");
+    ensureAuth();
 
-      if (!auth) throw new Error("Firebase Auth غير مهيأ");
+    if (isNative()) {
+      const result = await FirebaseAuthentication.signInWithGoogle().catch((err) => {
+        console.error("Native Google Plugin Error:", err);
+        throw new Error(formatNativePluginError("جوجل", err));
+      });
+
+      const idToken = result?.credential?.idToken;
+      if (!idToken) {
+        throw new Error("لم يتم استلام رمز التحقق (idToken) من جوجل.");
+      }
 
       const credential = GoogleAuthProvider.credential(idToken);
       const userCredential = await signInWithCredential(auth, credential);
-      
-      return { 
-        user: userCredential.user, 
-        idToken: await userCredential.user.getIdToken() 
+
+      return {
+        user: userCredential.user,
+        idToken: await userCredential.user.getIdToken(),
       };
-    } else {
-      // ✅ للويب
-      if (!auth) throw new Error("Firebase Auth غير مهيأ");
-      
-      try {
-        const result = await signInWithPopup(auth, googleProvider, browserPopupRedirectResolver);
-        const idToken = await result.user.getIdToken();
-        return { user: result.user, idToken };
-      } catch (popupError: any) {
-        if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/cancelled-popup-request') {
-          await signInWithRedirect(auth, googleProvider);
-          return { user: null, idToken: null };
-        }
-        throw popupError;
+    }
+
+    try {
+      const result = await signInWithPopup(auth, googleProvider, browserPopupRedirectResolver);
+      const idToken = await result.user.getIdToken();
+      return { user: result.user, idToken };
+    } catch (error) {
+      const popupError = error as any;
+      if (popupError?.code === "auth/popup-blocked" || popupError?.code === "auth/cancelled-popup-request") {
+        await signInWithRedirect(auth, googleProvider);
+        return { user: null, idToken: null };
       }
-      throw popupError;
+      throw error;
     }
   } catch (error: any) {
     console.error("Error signing in with Google:", error);
