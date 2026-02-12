@@ -132,9 +132,9 @@ export const signInWithFacebook = async () => {
 };
 
 export const handleRedirectResult = async () => {
-  if (isNative()) return null;
+  if (Capacitor.isNativePlatform()) return null;
   if (!auth) return null;
-
+  
   try {
     const result = await getRedirectResult(auth);
     if (result) {
