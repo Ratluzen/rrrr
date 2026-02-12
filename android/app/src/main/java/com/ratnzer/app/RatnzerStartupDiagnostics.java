@@ -7,10 +7,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-
 public final class RatnzerStartupDiagnostics {
     private static final String TAG = "StartupDiagnostics";
     private static final String PREFS_NAME = "ratnzer_debug_crash";
@@ -62,7 +58,7 @@ public final class RatnzerStartupDiagnostics {
             : (existing + "\n" + ts + ":" + marker);
 
         String[] lines = next.split("\\n");
-        int keepFrom = Math.max(0, lines.length - 80);
+        int keepFrom = Math.max(0, lines.length - 60);
         StringBuilder sb = new StringBuilder();
         for (int i = keepFrom; i < lines.length; i++) {
             if (sb.length() > 0) sb.append('\n');

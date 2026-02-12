@@ -36,27 +36,4 @@ public class RatnzerApplication extends Application {
             RatnzerStartupDiagnostics.recordCrash(this, "Application onCreate failure", error);
         }
     }
-
-    private void logRuntimeBootstrapInfo() {
-        String msg = "manufacturer=" + Build.MANUFACTURER
-            + ", model=" + Build.MODEL
-            + ", sdk=" + Build.VERSION.SDK_INT
-            + ", release=" + Build.VERSION.RELEASE;
-        RatnzerStartupDiagnostics.recordMessage(this, "BOOTSTRAP", msg);
-    }
-
-    private void verifyCriticalStartupClasses() {
-        checkClass("com.getcapacitor.BridgeActivity");
-        checkClass("io.capawesome.capacitorjs.plugins.firebase.auth.FirebaseAuthenticationPlugin");
-        checkClass("com.google.firebase.FirebaseApp");
-    }
-
-    private void checkClass(String className) {
-        try {
-            Class.forName(className);
-            RatnzerStartupDiagnostics.recordMessage(this, "CLASS_OK", className);
-        } catch (Throwable error) {
-            RatnzerStartupDiagnostics.recordCrash(this, "Critical class missing/failing: " + className, error);
-        }
-    }
 }
