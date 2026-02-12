@@ -47,7 +47,6 @@ public class RatnzerApplication extends Application {
 
     private void verifyCriticalStartupClasses() {
         checkClass("com.getcapacitor.BridgeActivity");
-        checkClass("io.capawesome.capacitorjs.plugins.firebase.auth.FirebaseAuthenticationPlugin");
         checkClass("com.google.firebase.FirebaseApp");
     }
 
