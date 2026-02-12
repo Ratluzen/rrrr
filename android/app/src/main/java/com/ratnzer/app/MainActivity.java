@@ -20,6 +20,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         RatnzerStartupDiagnostics.recordStartupMarker(this, "main_activity_onCreate_enter");
         RatnzerStartupDiagnostics.installUncaughtHandler(this, "main_activity");
+        RatnzerStartupDiagnostics.forceExportStateSnapshot(this, "main_activity_enter");
 
         super.onCreate(savedInstanceState);
 

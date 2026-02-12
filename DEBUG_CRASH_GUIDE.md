@@ -1,24 +1,28 @@
-# Debug APK Crash Guide (Early Startup + Auto Export to Downloads)
+# Debug APK Crash Guide (Early Startup + Forced Snapshot Export)
 
-الآن السجل يتم حفظه تلقائيًا بطريقتين مع كل Marker/Crash:
+تمت إضافة آلية أقوى للأجهزة التي قد لا تُظهر ملف السجل بسهولة (مثل بعض أجهزة MIUI):
 
-1. **Internal log** داخل التطبيق: `startup-debug.log`
-2. **Public export** في مسار عام مباشر على الذاكرة المشتركة (SD Card shared storage):
+## ماذا يحدث الآن تلقائيًا؟
+
+1. عند بدء العملية (قبل أي Activity) عبر `EarlyStartupProvider`:
+   - يتم تسجيل Startup Marker.
+   - يتم تنفيذ **Forced Snapshot Export** فورًا.
+2. يتم تصدير ملفين عامّين إلى الذاكرة المشتركة (مع fallback):
    - `/sdcard/RatnzerDebug/startup-debug.log`
+   - `/sdcard/RatnzerDebug/startup-debug-snapshot.txt`
+3. إذا فشل `/sdcard`، يتم fallback إلى:
+   - `Downloads/RatnzerDebug/startup-debug.log`
+   - `Downloads/RatnzerDebug/startup-debug-snapshot.txt`
 
-   مع fallback إضافي إلى: `Downloads/RatnzerDebug/startup-debug.log` إذا منع الجهاز الكتابة على `/sdcard`.
+بهذا حتى لو انهار التطبيق مبكرًا جدًا، غالبًا ستحصل على Snapshot للحالة قبل الكراش.
 
-بهذا يمكنك قراءة Stack Trace + Startup Markers مباشرة من مدير الملفات في الهاتف.
+## محتوى الملفات
 
-## طبقات التشخيص المضافة
-
-1. `EarlyStartupProvider` يعمل قبل `Application` و`MainActivity` ويضع Startup Markers مبكرًا جدًا.
-2. `RatnzerApplication` يثبت `UncaughtExceptionHandler` في `attachBaseContext` و`onCreate`.
-3. `RatnzerApplication` يفحص تحميل Classes حرجة في الإقلاع مثل Capacitor/Firebase Plugin ويسجل النتيجة.
-4. `MainActivity` يكمل التسجيل ويعرض آخر Crash مخزن مع Startup Trace.
-5. كل سجل يتم **تصديره تلقائيًا** إلى ملف عام في Download.
-
-> ملاحظة مهمة: إذا كان الكراش Native قاتل جدًا (مثل SIGSEGV قبل Java bootstrap)، قد لا يتم اعتراضه في Java Handler، لكن AndroidRuntime + Startup Markers داخل ملف Downloads غالبًا يحدد آخر نقطة وصل لها التطبيق.
+- `startup-debug.log`: سطور Marker/Crash ورسائل التشخيص.
+- `startup-debug-snapshot.txt`: لقطة حالة كاملة تتضمن:
+  - آخر Crash مخزن
+  - Startup Trace
+  - سبب إنشاء اللقطة (reason)
 
 ## بناء نسخة Debug
 
@@ -28,16 +32,14 @@ npx cap sync android
 cd android && ./gradlew assembleDebug
 ```
 
-ملف APK:
+## أين أجد الملفات على الهاتف؟
 
-`android/app/build/outputs/apk/debug/app-debug.apk`
-
-## أين أجد ملف السجل على الهاتف؟
-
-- افتح تطبيق الملفات (File Manager)
-- اذهب إلى:
-
-`Downloads/RatnzerDebug/startup-debug.log`
+1. جرّب أولًا:
+   - `/sdcard/RatnzerDebug/startup-debug.log`
+   - `/sdcard/RatnzerDebug/startup-debug-snapshot.txt`
+2. fallback:
+   - `Downloads/RatnzerDebug/startup-debug.log`
+   - `Downloads/RatnzerDebug/startup-debug-snapshot.txt`
 
 ## قراءة Logcat (اختياري عند توفر ADB)
 
@@ -48,8 +50,6 @@ adb logcat -v time -s EarlyStartupProvider RatnzerApplication StartupDiagnostics
 ## طريقة التشخيص السريعة بدون كمبيوتر
 
 1. ثبّت `app-debug.apk`.
-2. افتح التطبيق (إذا انهار فورًا، افتحه مرة ثانية).
-3. افتح ملف:
-   - `/sdcard/RatnzerDebug/startup-debug.log`
-   - أو fallback: `Downloads/RatnzerDebug/startup-debug.log`
-4. أرسل محتوى الملف (أو آخر 100 سطر) لتحليل السبب الحقيقي للكراش.
+2. افتح التطبيق (إذا انهار فورًا، أعد فتحه مرة).
+3. افتح الملفين أعلاه في مدير الملفات.
+4. أرسل محتواهما (أو آخر 100 سطر من `startup-debug.log`) للتحليل.

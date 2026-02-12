@@ -26,6 +26,7 @@ public final class RatnzerStartupDiagnostics {
     private static final String LAST_CRASH_KEY = "last_crash";
     private static final String STARTUP_TRACE_KEY = "startup_trace";
     private static final String LOG_FILE_NAME = "startup-debug.log";
+    private static final String SNAPSHOT_FILE_NAME = "startup-debug-snapshot.txt";
     private static final String PUBLIC_SUBDIR = "RatnzerDebug";
     private static final String PRIMARY_PUBLIC_PATH = "/sdcard/" + PUBLIC_SUBDIR + "/" + LOG_FILE_NAME;
     private static volatile boolean handlerInstalled = false;
@@ -57,6 +58,7 @@ public final class RatnzerStartupDiagnostics {
             recordStartupMarker(appContext, "uncaught_handler_installed_by_" + source);
             Log.i(TAG, "Debug uncaught exception handler installed by " + source);
             appendToDebugFile(appContext, "HANDLER", "installed_by=" + source);
+            forceExportStateSnapshot(appContext, "handler_installed_" + source);
         }
     }
 
@@ -73,7 +75,7 @@ public final class RatnzerStartupDiagnostics {
             : (existing + "\n" + ts + ":" + marker);
 
         String[] lines = next.split("\\n");
-        int keepFrom = Math.max(0, lines.length - 60);
+        int keepFrom = Math.max(0, lines.length - 120);
         StringBuilder sb = new StringBuilder();
         for (int i = keepFrom; i < lines.length; i++) {
             if (sb.length() > 0) sb.append('\n');
@@ -94,6 +96,7 @@ public final class RatnzerStartupDiagnostics {
         prefs.edit().putString(LAST_CRASH_KEY, message).apply();
         appendToDebugFile(context.getApplicationContext(), "CRASH", message);
         Log.e(TAG, "Crash captured and persisted: " + title, error);
+        forceExportStateSnapshot(context.getApplicationContext(), "recordCrash");
     }
 
     public static void recordMessage(Context context, String category, String message) {
@@ -117,7 +120,8 @@ public final class RatnzerStartupDiagnostics {
         }
 
         String startupTrace = prefs.getString(STARTUP_TRACE_KEY, "no startup markers");
-        String logFilePath = getLogFilePath(appContext);
+        String internalLogFilePath = getLogFilePath(appContext);
+        String exportedPath = getPublicExportHint(appContext);
         prefs.edit().remove(LAST_CRASH_KEY).apply();
 
         String fullMessage = previousCrash
@@ -139,15 +143,36 @@ public final class RatnzerStartupDiagnostics {
         return file.getAbsolutePath();
     }
 
+    public static void forceExportStateSnapshot(Context context, String reason) {
+        if (!BuildConfig.DEBUG || context == null) {
+            return;
+        }
+
+        try {
+            Context appContext = context.getApplicationContext();
+            SharedPreferences prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            String crash = prefs.getString(LAST_CRASH_KEY, "(none)");
+            String trace = prefs.getString(STARTUP_TRACE_KEY, "(none)");
+            String snapshot = "reason=" + reason + "\n"
+                + "time=" + System.currentTimeMillis() + "\n"
+                + "public_path_hint=" + getPublicExportHint(appContext) + "\n\n"
+                + "=== LAST_CRASH ===\n" + crash + "\n\n"
+                + "=== STARTUP_TRACE ===\n" + trace + "\n";
+
+            appendLineToPublicFile(snapshot, SNAPSHOT_FILE_NAME, appContext);
+        } catch (Throwable error) {
+            Log.e(TAG, "Failed to export state snapshot.", error);
+        }
+    }
+
     private static void appendToDebugFile(Context context, String category, String message) {
         if (!BuildConfig.DEBUG || context == null) {
             return;
         }
 
         String line = System.currentTimeMillis() + " [" + category + "] " + message + "\n";
-
         appendToInternalFile(context, line);
-        appendToPublicLocations(context, line);
+        appendLineToPublicFile(line, LOG_FILE_NAME, context);
     }
 
     private static void appendToInternalFile(Context context, String line) {
@@ -158,7 +183,7 @@ public final class RatnzerStartupDiagnostics {
             writer.write(line);
             writer.flush();
         } catch (IOException ioError) {
-            Log.e(TAG, "Failed to append debug file log.", ioError);
+            Log.e(TAG, "Failed to append internal debug file log.", ioError);
         } finally {
             if (writer != null) {
                 try {
@@ -170,10 +195,10 @@ public final class RatnzerStartupDiagnostics {
         }
     }
 
-    private static void appendToPublicLocations(Context context, String line) {
-        // 1) Try explicit shared root path requested by QA: /sdcard/RatnzerDebug/startup-debug.log
+    private static void appendLineToPublicFile(String line, String fileName, Context context) {
+        // 1) Try explicit shared root path requested by QA: /sdcard/RatnzerDebug/<file>
         try {
-            appendUsingSdcardRoot(line);
+            appendUsingSdcardRoot(line, fileName);
             return;
         } catch (Throwable rootError) {
             Log.w(TAG, "Failed writing /sdcard debug export, trying fallback exports.", rootError);
@@ -182,19 +207,39 @@ public final class RatnzerStartupDiagnostics {
         // 2) Fallback to Downloads via MediaStore (Android 10+) or legacy Downloads path.
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                appendUsingMediaStore(context, line);
+                appendUsingMediaStore(context, line, fileName);
             } else {
-                appendUsingLegacyDownloads(line);
+                appendUsingLegacyDownloads(line, fileName);
             }
         } catch (Throwable error) {
-            Log.e(TAG, "Failed writing public debug log export.", error);
+            Log.e(TAG, "Failed writing public debug log export in all locations.", error);
         }
     }
 
-    private static void appendUsingMediaStore(Context context, String line) throws IOException {
+    private static void appendUsingSdcardRoot(String line, String fileName) throws IOException {
+        File sdcardRoot = Environment.getExternalStorageDirectory();
+        File folder = new File(sdcardRoot, PUBLIC_SUBDIR);
+        if (!folder.exists() && !folder.mkdirs()) {
+            throw new IOException("Failed to create /sdcard folder: " + folder.getAbsolutePath());
+        }
+
+        File out = new File(folder, fileName);
+        FileWriter writer = null;
+        try {
+            writer = new FileWriter(out, true);
+            writer.write(line);
+            writer.flush();
+        } finally {
+            if (writer != null) {
+                writer.close();
+            }
+        }
+    }
+
+    private static void appendUsingMediaStore(Context context, String line, String fileName) throws IOException {
         ContentResolver resolver = context.getContentResolver();
         Uri collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI;
-        Uri uri = findOrCreateMediaStoreEntry(resolver, collection);
+        Uri uri = findOrCreateMediaStoreEntry(resolver, collection, fileName);
         if (uri == null) {
             throw new IOException("Could not create/find MediaStore log entry");
         }
@@ -218,11 +263,11 @@ public final class RatnzerStartupDiagnostics {
         }
     }
 
-    private static Uri findOrCreateMediaStoreEntry(ContentResolver resolver, Uri collection) {
+    private static Uri findOrCreateMediaStoreEntry(ContentResolver resolver, Uri collection, String fileName) {
         String relativePath = Environment.DIRECTORY_DOWNLOADS + "/" + PUBLIC_SUBDIR + "/";
         String[] projection = new String[]{MediaStore.Downloads._ID};
         String selection = MediaStore.Downloads.DISPLAY_NAME + "=? AND " + MediaStore.Downloads.RELATIVE_PATH + "=?";
-        String[] selectionArgs = new String[]{LOG_FILE_NAME, relativePath};
+        String[] selectionArgs = new String[]{fileName, relativePath};
 
         Cursor cursor = null;
         try {
@@ -240,21 +285,21 @@ public final class RatnzerStartupDiagnostics {
         }
 
         ContentValues values = new ContentValues();
-        values.put(MediaStore.Downloads.DISPLAY_NAME, LOG_FILE_NAME);
+        values.put(MediaStore.Downloads.DISPLAY_NAME, fileName);
         values.put(MediaStore.Downloads.MIME_TYPE, "text/plain");
         values.put(MediaStore.Downloads.RELATIVE_PATH, relativePath);
 
         return resolver.insert(collection, values);
     }
 
-    private static void appendUsingLegacyDownloads(String line) throws IOException {
+    private static void appendUsingLegacyDownloads(String line, String fileName) throws IOException {
         File downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
         File folder = new File(downloads, PUBLIC_SUBDIR);
         if (!folder.exists() && !folder.mkdirs()) {
             throw new IOException("Failed to create folder: " + folder.getAbsolutePath());
         }
 
-        File out = new File(folder, LOG_FILE_NAME);
+        File out = new File(folder, fileName);
         FileWriter writer = null;
         try {
             writer = new FileWriter(out, true);
