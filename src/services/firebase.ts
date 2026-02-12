@@ -65,6 +65,11 @@ const getFirebaseAuthenticationPlugin = async () => {
   if (firebaseAuthenticationPlugin) return firebaseAuthenticationPlugin;
   if (pluginLoadAttempted) return null;
 
+  if (!Capacitor.isPluginAvailable("FirebaseAuthentication")) {
+    console.warn("FirebaseAuthentication plugin is not available on this platform/runtime.");
+    return null;
+  }
+
   pluginLoadAttempted = true;
 
   try {
