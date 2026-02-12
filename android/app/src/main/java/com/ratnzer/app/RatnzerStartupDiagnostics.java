@@ -1,11 +1,24 @@
 package com.ratnzer.app;
 
 import android.app.AlertDialog;
+import android.content.ContentResolver;
+import android.content.ContentUris;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.MediaStore;
 import android.util.Log;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.OutputStream;
 
 public final class RatnzerStartupDiagnostics {
     private static final String TAG = "StartupDiagnostics";
@@ -128,9 +141,14 @@ public final class RatnzerStartupDiagnostics {
             return;
         }
 
-        File file = new File(context.getApplicationContext().getFilesDir(), LOG_FILE_NAME);
         String line = System.currentTimeMillis() + " [" + category + "] " + message + "\n";
 
+        appendToInternalFile(context, line);
+        appendToPublicDownloadFile(context, line);
+    }
+
+    private static void appendToInternalFile(Context context, String line) {
+        File file = new File(context.getApplicationContext().getFilesDir(), LOG_FILE_NAME);
         FileWriter writer = null;
         try {
             writer = new FileWriter(file, true);
@@ -147,5 +165,101 @@ public final class RatnzerStartupDiagnostics {
                 }
             }
         }
+    }
+
+    private static void appendToPublicDownloadFile(Context context, String line) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                appendUsingMediaStore(context, line);
+            } else {
+                appendUsingLegacyDownloads(line);
+            }
+        } catch (Throwable error) {
+            Log.e(TAG, "Failed writing public debug log export.", error);
+        }
+    }
+
+    private static void appendUsingMediaStore(Context context, String line) throws IOException {
+        ContentResolver resolver = context.getContentResolver();
+        Uri collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI;
+        Uri uri = findOrCreateMediaStoreEntry(resolver, collection);
+        if (uri == null) {
+            throw new IOException("Could not create/find MediaStore log entry");
+        }
+
+        OutputStream os = null;
+        try {
+            os = resolver.openOutputStream(uri, "wa");
+            if (os == null) {
+                throw new IOException("openOutputStream returned null for " + uri);
+            }
+            os.write(line.getBytes());
+            os.flush();
+        } finally {
+            if (os != null) {
+                try {
+                    os.close();
+                } catch (IOException ignored) {
+                    // ignore
+                }
+            }
+        }
+    }
+
+    private static Uri findOrCreateMediaStoreEntry(ContentResolver resolver, Uri collection) {
+        String relativePath = Environment.DIRECTORY_DOWNLOADS + "/" + PUBLIC_SUBDIR + "/";
+        String[] projection = new String[]{MediaStore.Downloads._ID};
+        String selection = MediaStore.Downloads.DISPLAY_NAME + "=? AND " + MediaStore.Downloads.RELATIVE_PATH + "=?";
+        String[] selectionArgs = new String[]{LOG_FILE_NAME, relativePath};
+
+        Cursor cursor = null;
+        try {
+            cursor = resolver.query(collection, projection, selection, selectionArgs, null);
+            if (cursor != null && cursor.moveToFirst()) {
+                long id = cursor.getLong(0);
+                return ContentUris.withAppendedId(collection, id);
+            }
+        } catch (Throwable error) {
+            Log.e(TAG, "MediaStore query failed while locating debug log entry.", error);
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+
+        ContentValues values = new ContentValues();
+        values.put(MediaStore.Downloads.DISPLAY_NAME, LOG_FILE_NAME);
+        values.put(MediaStore.Downloads.MIME_TYPE, "text/plain");
+        values.put(MediaStore.Downloads.RELATIVE_PATH, relativePath);
+
+        return resolver.insert(collection, values);
+    }
+
+    private static void appendUsingLegacyDownloads(String line) throws IOException {
+        File downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        File folder = new File(downloads, PUBLIC_SUBDIR);
+        if (!folder.exists() && !folder.mkdirs()) {
+            throw new IOException("Failed to create folder: " + folder.getAbsolutePath());
+        }
+
+        File out = new File(folder, LOG_FILE_NAME);
+        FileWriter writer = null;
+        try {
+            writer = new FileWriter(out, true);
+            writer.write(line);
+            writer.flush();
+        } finally {
+            if (writer != null) {
+                writer.close();
+            }
+        }
+    }
+
+    public static String getPublicExportHint(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            return "Downloads/" + PUBLIC_SUBDIR + "/" + LOG_FILE_NAME;
+        }
+        return Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            + "/" + PUBLIC_SUBDIR + "/" + LOG_FILE_NAME;
     }
 }

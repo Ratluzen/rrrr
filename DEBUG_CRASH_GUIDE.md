@@ -1,11 +1,22 @@
-# Debug APK Crash Guide
+# Debug APK Crash Guide (Early Startup + Auto Export to Downloads)
 
-تم إضافة آلية تشخيص للكراش في نسخة **Debug**:
+الآن السجل يتم حفظه تلقائيًا بطريقتين مع كل Marker/Crash:
 
-1. في Android (`MainActivity`) يتم تركيب `UncaughtExceptionHandler` في وضع Debug.
-2. أي خطأ غير ملتقط أثناء الإقلاع يتم حفظه تلقائيًا في `SharedPreferences`.
-3. عند فتح التطبيق مرة أخرى، تظهر نافذة تحتوي آخر Stack Trace.
-4. يتم أيضًا تسجيل التفاصيل في Logcat بعلامة `MainActivity`.
+1. **Internal log** داخل التطبيق: `startup-debug.log`
+2. **Public export** في مجلد التنزيلات (Download) بحيث يمكن فتحه من الهاتف بدون ADB:
+   - `Downloads/RatnzerDebug/startup-debug.log`
+
+بهذا يمكنك قراءة Stack Trace + Startup Markers مباشرة من مدير الملفات في الهاتف.
+
+## طبقات التشخيص المضافة
+
+1. `EarlyStartupProvider` يعمل قبل `Application` و`MainActivity` ويضع Startup Markers مبكرًا جدًا.
+2. `RatnzerApplication` يثبت `UncaughtExceptionHandler` في `attachBaseContext` و`onCreate`.
+3. `RatnzerApplication` يفحص تحميل Classes حرجة في الإقلاع مثل Capacitor/Firebase Plugin ويسجل النتيجة.
+4. `MainActivity` يكمل التسجيل ويعرض آخر Crash مخزن مع Startup Trace.
+5. كل سجل يتم **تصديره تلقائيًا** إلى ملف عام في Download.
+
+> ملاحظة مهمة: إذا كان الكراش Native قاتل جدًا (مثل SIGSEGV قبل Java bootstrap)، قد لا يتم اعتراضه في Java Handler، لكن AndroidRuntime + Startup Markers داخل ملف Downloads غالبًا يحدد آخر نقطة وصل لها التطبيق.
 
 ## بناء نسخة Debug
 
@@ -19,28 +30,23 @@ cd android && ./gradlew assembleDebug
 
 `android/app/build/outputs/apk/debug/app-debug.apk`
 
-## قراءة السجلات من الهاتف (Logcat)
+## أين أجد ملف السجل على الهاتف؟
+
+- افتح تطبيق الملفات (File Manager)
+- اذهب إلى:
+
+`Downloads/RatnzerDebug/startup-debug.log`
+
+## قراءة Logcat (اختياري عند توفر ADB)
 
 ```bash
 adb logcat -v time -s EarlyStartupProvider RatnzerApplication StartupDiagnostics MainActivity AndroidRuntime Capacitor
 ```
 
-## سحب ملف السجل الداخلي من الهاتف
-
-بعد تثبيت نسخة Debug وتشغيل التطبيق:
-
-```bash
-adb shell run-as com.ratnzer.app cat files/startup-debug.log
-```
-
-(إذا كان `run-as` مدعومًا على الجهاز، سيعرض لك محتوى السجل الكامل.)
-
-## طريقة التشخيص السريعة
+## طريقة التشخيص السريعة بدون كمبيوتر
 
 1. ثبّت `app-debug.apk`.
-2. شغل Logcat بالأمر أعلاه.
-3. افتح التطبيق؛ إذا انهار فورًا، افتحه مرة ثانية.
-4. خذ:
-   - Stack trace من Logcat
-   - محتوى `startup-debug.log`
-   - Startup Trace الظاهر في النافذة (إن ظهرت)
+2. افتح التطبيق (إذا انهار فورًا، افتحه مرة ثانية).
+3. افتح ملف:
+   - `Downloads/RatnzerDebug/startup-debug.log`
+4. أرسل محتوى الملف (أو آخر 100 سطر) لتحليل السبب الحقيقي للكراش.
