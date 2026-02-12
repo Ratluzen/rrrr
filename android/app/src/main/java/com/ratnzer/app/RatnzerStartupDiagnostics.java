@@ -26,7 +26,6 @@ public final class RatnzerStartupDiagnostics {
     private static final String LAST_CRASH_KEY = "last_crash";
     private static final String STARTUP_TRACE_KEY = "startup_trace";
     private static final String LOG_FILE_NAME = "startup-debug.log";
-    private static final String PUBLIC_SUBDIR = "RatnzerDebug";
     private static volatile boolean handlerInstalled = false;
 
     private RatnzerStartupDiagnostics() {}
@@ -72,7 +71,7 @@ public final class RatnzerStartupDiagnostics {
             : (existing + "\n" + ts + ":" + marker);
 
         String[] lines = next.split("\\n");
-        int keepFrom = Math.max(0, lines.length - 80);
+        int keepFrom = Math.max(0, lines.length - 60);
         StringBuilder sb = new StringBuilder();
         for (int i = keepFrom; i < lines.length; i++) {
             if (sb.length() > 0) sb.append('\n');
@@ -116,14 +115,12 @@ public final class RatnzerStartupDiagnostics {
         }
 
         String startupTrace = prefs.getString(STARTUP_TRACE_KEY, "no startup markers");
-        String internalLogFilePath = getLogFilePath(appContext);
-        String exportedPath = getPublicExportHint(appContext);
+        String logFilePath = getLogFilePath(appContext);
         prefs.edit().remove(LAST_CRASH_KEY).apply();
 
         String fullMessage = previousCrash
             + "\n\n--- Startup Trace ---\n" + startupTrace
-            + "\n\n--- Internal Debug Log File ---\n" + internalLogFilePath
-            + "\n\n--- Public Export ---\n" + exportedPath;
+            + "\n\n--- Debug Log File ---\n" + logFilePath;
 
         new Handler(Looper.getMainLooper()).post(() -> new AlertDialog.Builder(context)
             .setTitle("آخر خطأ أثناء الإقلاع (Debug)")
@@ -158,7 +155,7 @@ public final class RatnzerStartupDiagnostics {
             writer.write(line);
             writer.flush();
         } catch (IOException ioError) {
-            Log.e(TAG, "Failed to append internal debug file log.", ioError);
+            Log.e(TAG, "Failed to append debug file log.", ioError);
         } finally {
             if (writer != null) {
                 try {
