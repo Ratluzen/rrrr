@@ -18,6 +18,9 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        RatnzerStartupDiagnostics.recordStartupMarker(this, "main_activity_onCreate_enter");
+        RatnzerStartupDiagnostics.installUncaughtHandler(this, "main_activity");
+
         super.onCreate(savedInstanceState);
 
         installDebugCrashReporter();
@@ -26,60 +29,14 @@ public class MainActivity extends BridgeActivity {
         try {
             this.registerPlugin(FirebaseAuthenticationPlugin.class);
             Log.i(TAG, "FirebaseAuthentication plugin registered successfully.");
+            RatnzerStartupDiagnostics.recordStartupMarker(this, "firebase_auth_plugin_registered");
         } catch (Throwable error) {
             Log.e(TAG, "FirebaseAuthentication plugin registration failed. App will continue without native social auth.", error);
-            saveCrashForDebug("Plugin registration failed", error);
-        }
-    }
-
-    private void installDebugCrashReporter() {
-        if (!BuildConfig.DEBUG) {
-            return;
+            RatnzerStartupDiagnostics.recordCrash(this, "Plugin registration failed", error);
+            RatnzerStartupDiagnostics.recordStartupMarker(this, "firebase_auth_plugin_registration_failed");
         }
 
-        final Thread.UncaughtExceptionHandler defaultHandler = Thread.getDefaultUncaughtExceptionHandler();
-        Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
-            saveCrashForDebug("Uncaught exception on thread: " + thread.getName(), throwable);
-            Log.e(TAG, "Uncaught exception captured by debug crash reporter.", throwable);
-
-            if (defaultHandler != null) {
-                defaultHandler.uncaughtException(thread, throwable);
-            }
-        });
-
-        Log.i(TAG, "Debug crash reporter installed.");
-    }
-
-    private void saveCrashForDebug(String title, Throwable error) {
-        if (!BuildConfig.DEBUG) {
-            return;
-        }
-
-        String message = title + "\n" + Log.getStackTraceString(error);
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        prefs.edit().putString(LAST_CRASH_KEY, message).apply();
-    }
-
-    private void showPreviousCrashIfAny() {
-        if (!BuildConfig.DEBUG) {
-            return;
-        }
-
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        String previousCrash = prefs.getString(LAST_CRASH_KEY, null);
-        if (previousCrash == null || previousCrash.trim().isEmpty()) {
-            return;
-        }
-
-        prefs.edit().remove(LAST_CRASH_KEY).apply();
-
-        new Handler(Looper.getMainLooper()).post(() -> {
-            new AlertDialog.Builder(this)
-                .setTitle("آخر خطأ أثناء الإقلاع (Debug)")
-                .setMessage(previousCrash)
-                .setCancelable(true)
-                .setPositiveButton("حسنًا", null)
-                .show();
-        });
+        RatnzerStartupDiagnostics.showPreviousCrashIfAny(this);
+        RatnzerStartupDiagnostics.recordStartupMarker(this, "main_activity_onCreate_exit");
     }
 }

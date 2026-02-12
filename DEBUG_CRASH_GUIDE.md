@@ -22,7 +22,12 @@ cd android && ./gradlew assembleDebug
 ## قراءة السجلات من الهاتف (Logcat)
 
 ```bash
-adb logcat -s MainActivity Capacitor AndroidRuntime
+adb logcat -v time -s EarlyStartupProvider RatnzerApplication StartupDiagnostics MainActivity AndroidRuntime Capacitor
 ```
 
-إذا حدث كراش لحظي عند الإقلاع، نفّذ الأمر أعلاه ثم افتح التطبيق مباشرة للحصول على السبب الحقيقي.
+## كيف تستخدم التشخيص سريعًا
+
+1. ثبّت `app-debug.apk` على الهاتف.
+2. شغّل `adb logcat` بالأمر أعلاه.
+3. افتح التطبيق؛ إذا انهار فورًا، أعد فتحه مرة ثانية.
+4. في الفتح الثاني، ستظهر نافذة تحتوي آخر Stack Trace + Startup Trace (إن أمكن التقاطهما).
