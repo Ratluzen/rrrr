@@ -73,6 +73,13 @@ const clearPendingRedirectProvider = () => {
   } catch (_) {}
 };
 
+const isPopupRecoverableError = (error: any) => {
+  const code = error?.code;
+  return code === 'auth/popup-blocked'
+    || code === 'auth/cancelled-popup-request'
+    || code === 'auth/popup-closed-by-user';
+};
+
 /**
  * معالجة تسجيل الدخول عبر Google
  */
@@ -106,7 +113,7 @@ export const signInWithGoogle = async () => {
         const idToken = await result.user.getIdToken();
         return { user: result.user, idToken, provider: 'google.com' } satisfies SocialSignInResult;
       } catch (popupError: any) {
-        if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/cancelled-popup-request') {
+        if (isPopupRecoverableError(popupError)) {
           setPendingRedirectProvider('google.com');
           await signInWithRedirect(auth, googleProvider);
           return { user: null, idToken: null, provider: 'google.com' } satisfies SocialSignInResult;
@@ -153,7 +160,7 @@ export const signInWithFacebook = async () => {
         const idToken = await result.user.getIdToken();
         return { user: result.user, idToken, provider: 'facebook.com' } satisfies SocialSignInResult;
       } catch (popupError: any) {
-        if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/cancelled-popup-request') {
+        if (isPopupRecoverableError(popupError)) {
           setPendingRedirectProvider('facebook.com');
           await signInWithRedirect(auth, facebookProvider);
           return { user: null, idToken: null, provider: 'facebook.com' } satisfies SocialSignInResult;
