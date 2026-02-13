@@ -6,7 +6,6 @@ import {
   signInWithPopup, 
   signInWithRedirect,
   getRedirectResult,
-  signInWithCredential,
   browserPopupRedirectResolver
 } from "firebase/auth";
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
@@ -26,6 +25,14 @@ const firebaseConfig = {
 let app;
 let auth: any;
 
+type SocialProvider = 'google.com' | 'facebook.com';
+
+export interface SocialSignInResult {
+  user: any;
+  idToken: string | null;
+  provider: SocialProvider;
+}
+
 try {
   if (firebaseConfig.apiKey) {
     app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -41,32 +48,55 @@ try {
 export const googleProvider = new GoogleAuthProvider();
 export const facebookProvider = new FacebookAuthProvider();
 
+const REDIRECT_PROVIDER_KEY = 'ratnzer_social_redirect_provider';
+
+const setPendingRedirectProvider = (provider: SocialProvider) => {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(REDIRECT_PROVIDER_KEY, provider);
+  } catch (_) {}
+};
+
+const getPendingRedirectProvider = (): SocialProvider | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const v = sessionStorage.getItem(REDIRECT_PROVIDER_KEY);
+    if (v === 'google.com' || v === 'facebook.com') return v;
+  } catch (_) {}
+  return null;
+};
+
+const clearPendingRedirectProvider = () => {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.removeItem(REDIRECT_PROVIDER_KEY);
+  } catch (_) {}
+};
+
 /**
  * معالجة تسجيل الدخول عبر Google
  */
 export const signInWithGoogle = async () => {
   try {
     if (Capacitor.isNativePlatform()) {
-      // ✅ للهاتف: استخدام المصادقة الأصلية عبر Capacitor Plugin
+      // ✅ للهاتف: استخدام المصادقة الأصلية عبر Capacitor Plugin بدون الاعتماد على Firebase JS
       console.log("Starting Native Google Sign-In...");
       
       const result = await FirebaseAuthentication.signInWithGoogle().catch(err => {
         console.error("Native Google Plugin Error:", err);
         throw new Error(`خطأ في إضافة جوجل: ${err.message || 'تأكد من إعدادات SHA-1 في Firebase'}`);
       });
-      
-      const idToken = result.credential?.idToken;
-      if (!idToken) throw new Error("لم يتم استلام رمز التحقق (idToken) من جوجل. تأكد من ملف google-services.json");
+      if (!result?.user) throw new Error("فشل تسجيل الدخول عبر جوجل على النظام");
 
-      if (!auth) throw new Error("Firebase Auth غير مهيأ");
-
-      const credential = GoogleAuthProvider.credential(idToken);
-      const userCredential = await signInWithCredential(auth, credential);
+      const tokenResult = await FirebaseAuthentication.getIdToken({ forceRefresh: true });
+      const idToken = tokenResult?.token;
+      if (!idToken) throw new Error("لم يتم استلام رمز التحقق (idToken) من جوجل");
       
       return { 
-        user: userCredential.user, 
-        idToken: await userCredential.user.getIdToken() 
-      };
+        user: result.user,
+        idToken,
+        provider: 'google.com'
+      } satisfies SocialSignInResult;
     } else {
       // ✅ للويب
       if (!auth) throw new Error("Firebase Auth غير مهيأ");
@@ -74,11 +104,12 @@ export const signInWithGoogle = async () => {
       try {
         const result = await signInWithPopup(auth, googleProvider, browserPopupRedirectResolver);
         const idToken = await result.user.getIdToken();
-        return { user: result.user, idToken };
+        return { user: result.user, idToken, provider: 'google.com' } satisfies SocialSignInResult;
       } catch (popupError: any) {
         if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/cancelled-popup-request') {
+          setPendingRedirectProvider('google.com');
           await signInWithRedirect(auth, googleProvider);
-          return { user: null, idToken: null };
+          return { user: null, idToken: null, provider: 'google.com' } satisfies SocialSignInResult;
         }
         throw popupError;
       }
@@ -95,34 +126,40 @@ export const signInWithGoogle = async () => {
 export const signInWithFacebook = async () => {
   try {
     if (Capacitor.isNativePlatform()) {
-      // ✅ للهاتف
+      // ✅ للهاتف: Native Facebook + Firebase token من الطبقة الأصلية
       console.log("Starting Native Facebook Sign-In...");
       
       const result = await FirebaseAuthentication.signInWithFacebook().catch(err => {
         console.error("Native Facebook Plugin Error:", err);
         throw new Error(`خطأ في إضافة فيسبوك: ${err.message || 'تأكد من معرف التطبيق (App ID) في strings.xml'}`);
       });
-      
-      const accessToken = result.credential?.accessToken;
-      if (!accessToken) throw new Error("لم يتم استلام رمز الوصول (accessToken) من فيسبوك.");
+      if (!result?.user) throw new Error("فشل تسجيل الدخول عبر فيسبوك على النظام");
 
-      if (!auth) throw new Error("Firebase Auth غير مهيأ");
-
-      const credential = FacebookAuthProvider.credential(accessToken);
-      const userCredential = await signInWithCredential(auth, credential);
+      const tokenResult = await FirebaseAuthentication.getIdToken({ forceRefresh: true });
+      const idToken = tokenResult?.token;
+      if (!idToken) throw new Error("لم يتم استلام رمز التحقق (idToken) من فيسبوك");
       
       return { 
-        user: userCredential.user, 
-        idToken: await userCredential.user.getIdToken() 
-      };
+        user: result.user,
+        idToken,
+        provider: 'facebook.com'
+      } satisfies SocialSignInResult;
     } else {
       // ✅ للويب
       if (!auth) throw new Error("Firebase Auth غير مهيأ");
-      
-      // ✅ للويب: استخدام signInWithRedirect مباشرة لتجنب حظر النوافذ المنبثقة
-      await signInWithRedirect(auth, facebookProvider);
-      // لن يتم الوصول إلى هنا بعد إعادة التوجيه، سيتم معالجة النتيجة في App.tsx عبر handleRedirectResult
-      return { user: null, idToken: null };
+
+      try {
+        const result = await signInWithPopup(auth, facebookProvider, browserPopupRedirectResolver);
+        const idToken = await result.user.getIdToken();
+        return { user: result.user, idToken, provider: 'facebook.com' } satisfies SocialSignInResult;
+      } catch (popupError: any) {
+        if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/cancelled-popup-request') {
+          setPendingRedirectProvider('facebook.com');
+          await signInWithRedirect(auth, facebookProvider);
+          return { user: null, idToken: null, provider: 'facebook.com' } satisfies SocialSignInResult;
+        }
+        throw popupError;
+      }
     }
   } catch (error: any) {
     console.error("Error signing in with Facebook:", error);
@@ -141,8 +178,21 @@ export const handleRedirectResult = async () => {
     const result = await getRedirectResult(auth);
     if (result) {
       const idToken = await result.user.getIdToken();
-      return { user: result.user, idToken };
+      const provider = (result.providerId === 'facebook.com' ? 'facebook.com' : 'google.com') as SocialProvider;
+      clearPendingRedirectProvider();
+      return { user: result.user, idToken, provider } satisfies SocialSignInResult;
     }
+
+    // Chrome في بعض الحالات لا يعيد redirectResult رغم اكتمال تسجيل الدخول
+    const pendingProvider = getPendingRedirectProvider();
+    if (pendingProvider && auth.currentUser) {
+      const idToken = await auth.currentUser.getIdToken();
+      if (idToken) {
+        clearPendingRedirectProvider();
+        return { user: auth.currentUser, idToken, provider: pendingProvider } satisfies SocialSignInResult;
+      }
+    }
+
     return null;
   } catch (error) {
     console.error("Error handling redirect result:", error);
