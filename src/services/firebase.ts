@@ -9,7 +9,8 @@ import {
   signInWithCredential,
   browserPopupRedirectResolver,
   setPersistence,
-  browserLocalPersistence
+  browserLocalPersistence,
+  indexedDBLocalPersistence
 } from "firebase/auth";
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { Capacitor } from '@capacitor/core';
@@ -17,7 +18,7 @@ import { Capacitor } from '@capacitor/core';
 // ✅ إعدادات Firebase
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "",
+  authDomain: "ratnzer.com",
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "",
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "",
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
@@ -41,7 +42,7 @@ try {
     app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
     auth = getAuth(app);
     // ✅ تعيين الثبات لضمان بقاء الجلسة عبر إعادة التوجيه في كروم
-    setPersistence(auth, browserLocalPersistence).catch(err => {
+    setPersistence(auth, indexedDBLocalPersistence).catch(err => {
       console.warn("Auth persistence error:", err);
     });
   } else {
