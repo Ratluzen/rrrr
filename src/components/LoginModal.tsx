@@ -65,7 +65,11 @@ const LoginModal: React.FC<Props> = ({ isOpen, onClose, onLogin, terms }) => {
       const token = (res as any)?.data?.token;
       if (token) {
         localStorage.setItem('token', token);
-        onLogin({ isRegister: false });
+        // ✅ لضمان استقرار متصفح كروم، نقوم بتحديث الصفحة بعد تأخير بسيط
+        setTimeout(() => {
+          onLogin({ isRegister: false });
+          window.location.reload();
+        }, 100);
       } else {
         alert('فشل الحصول على رمز الدخول من السيرفر');
       }
@@ -92,7 +96,11 @@ const LoginModal: React.FC<Props> = ({ isOpen, onClose, onLogin, terms }) => {
 
       if (token) {
         localStorage.setItem('token', token);
-        onLogin({ isRegister: false });
+        // ✅ لضمان استقرار متصفح كروم، نقوم بتحديث الصفحة بعد تأخير بسيط
+        setTimeout(() => {
+          onLogin({ isRegister: false });
+          window.location.reload();
+        }, 100);
       } else {
         alert('فشل الحصول على رمز الدخول من السيرفر');
       }

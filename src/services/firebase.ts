@@ -7,7 +7,9 @@ import {
   signInWithRedirect,
   getRedirectResult,
   signInWithCredential,
-  browserPopupRedirectResolver
+  browserPopupRedirectResolver,
+  setPersistence,
+  browserLocalPersistence
 } from "firebase/auth";
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { Capacitor } from '@capacitor/core';
@@ -38,6 +40,10 @@ try {
   if (firebaseConfig.apiKey) {
     app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
     auth = getAuth(app);
+    // ✅ تعيين الثبات لضمان بقاء الجلسة عبر إعادة التوجيه في كروم
+    setPersistence(auth, browserLocalPersistence).catch(err => {
+      console.warn("Auth persistence error:", err);
+    });
   } else {
     console.warn("Firebase configuration is missing.");
   }
@@ -47,7 +53,16 @@ try {
 
 // Providers
 export const googleProvider = new GoogleAuthProvider();
+// ✅ تحسين إعدادات جوجل لكروم
+googleProvider.setCustomParameters({
+  prompt: 'select_account'
+});
+
 export const facebookProvider = new FacebookAuthProvider();
+// ✅ تحسين إعدادات فيسبوك لكروم
+facebookProvider.setCustomParameters({
+  display: 'popup'
+});
 
 /**
  * معالجة تسجيل الدخول عبر Google

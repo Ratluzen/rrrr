@@ -378,7 +378,10 @@ const App: React.FC = () => {
               const token = (res as any)?.data?.token;
               if (token) {
                 localStorage.setItem('token', token);
-                window.location.replace(window.location.origin);
+                // ✅ إضافة تأخير بسيط لضمان حفظ البيانات في التخزين المحلي قبل إعادة التوجيه
+                setTimeout(() => {
+                  window.location.href = window.location.origin;
+                }, 100);
               }
             }
           }
