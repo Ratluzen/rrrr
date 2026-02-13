@@ -378,10 +378,10 @@ const App: React.FC = () => {
               const token = (res as any)?.data?.token;
               if (token) {
                 localStorage.setItem('token', token);
-                // ✅ إضافة تأخير بسيط لضمان حفظ البيانات في التخزين المحلي قبل إعادة التوجيه
-                setTimeout(() => {
-                  window.location.href = window.location.origin;
-                }, 100);
+                // ✅ تحديث الصفحة ديناميكيًا دون إعادة تحميل كاملة
+                setShowLoginModal(false);
+                // سيتم تحديث حالة المستخدم تلقائيًا عبر useEffect الذي يراقب التوكن أو عبر جلب البيانات مباشرة
+                window.dispatchEvent(new Event('storage')); // تنبيه التطبيق بتحديث التوكن
               }
             }
           }
