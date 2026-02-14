@@ -175,11 +175,15 @@ const getFrontendReturnUrl = (params, type, isApp = false) => {
   const cleanBase = base.replace(/\/$/, '');
   const qs = new URLSearchParams(params || {}).toString();
 
+  // Normalize type for wallet
+  const isWallet = type === 'topup' || type === 'wallet';
+  const isService = type === 'single' || type === 'cart' || type === 'service';
+
   if (isApp) {
     // Deep links for Android app
-    if (type === 'topup') {
+    if (isWallet) {
       return `ratnzer://wallet?${qs}`;
-    } else if (type === 'single' || type === 'cart') {
+    } else if (isService) {
       return `ratnzer://service?${qs}`;
     }
     // Fallback to Capacitor default local origin
@@ -187,9 +191,9 @@ const getFrontendReturnUrl = (params, type, isApp = false) => {
   }
 
   // Web redirection
-  if (type === 'topup') {
+  if (isWallet) {
     return `${cleanBase}/wallet?${qs}`;
-  } else if (type === 'single' || type === 'cart') {
+  } else if (isService) {
     return `${cleanBase}/profile?${qs}`; // Or wherever orders are listed
   }
 
@@ -894,7 +898,7 @@ const paytabsReturn = asyncHandler(async (req, res) => {
     pt_payment_id: paymentId || '',
     pt_tran_ref: tranRef || '',
     pt_return_view: returnView || 'home',
-  }, returnView === 'wallet' ? 'topup' : 'service', isApp);
+  }, returnView, isApp);
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   const isDeepLink = frontendUrl.startsWith('ratnzer://');
