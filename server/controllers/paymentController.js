@@ -154,15 +154,29 @@ const getCallbackUrl = () => {
   return `${base.replace(/\/$/, '')}/api/payments/paytabs/callback`;
 };
 
-const getReturnUrl = () => {
-  if (process.env.APP_RETURN_URL) return process.env.APP_RETURN_URL;
-  const base = process.env.APP_BASE_URL;
-  if (!base) return undefined;
-  return `${base.replace(/\/$/, '')}/api/payments/paytabs/return`;
+const getReturnUrl = (type) => {
+  const base = process.env.APP_BASE_URL || 'https://www.ratnzer.com';
+  const cleanBase = base.replace(/\/$/, '');
+  
+  // Custom return URLs based on transaction type
+  if (type === 'topup') {
+    return `${cleanBase}/payment/return/wallet`;
+  } else if (type === 'single' || type === 'cart') {
+    return `${cleanBase}/payment/return/service`;
+  }
+  
+  return `${cleanBase}/api/payments/paytabs/return`;
 };
 
-const getFrontendReturnUrl = (params) => {
-  // Capacitor default local origin (androidScheme: https)
+const getFrontendReturnUrl = (params, type) => {
+  // Deep links for Android app
+  if (type === 'topup') {
+    return `ratnzer://wallet`;
+  } else if (type === 'single' || type === 'cart') {
+    return `ratnzer://service`;
+  }
+  
+  // Fallback to Capacitor default local origin
   const qs = new URLSearchParams(params || {}).toString();
   return `https://localhost/?${qs}`;
 };
@@ -705,7 +719,7 @@ const createPaytabs = asyncHandler(async (req, res) => {
   // Build PayTabs request
   const customer = buildCustomerDetails(user);
   const callback = getCallbackUrl();
-  const ret = getReturnUrl();
+  const ret = getReturnUrl(type);
 
   if (!callback || !ret) {
     // Mark failed & tell operator
@@ -742,6 +756,9 @@ const createPaytabs = asyncHandler(async (req, res) => {
     customer_details: customer,
     shipping_details: customer,
     hide_shipping: true,
+    user_defined: {
+      udf1: type === 'topup' ? 'wallet' : 'service',
+    },
   };
 
   try {
@@ -832,11 +849,21 @@ const paytabsReturn = asyncHandler(async (req, res) => {
   let returnView = 'home';
   let paymentId = cartId;
 
+  // Determine return view from path if possible
+  if (req.path.includes('/wallet')) {
+    returnView = 'wallet';
+  } else if (req.path.includes('/service')) {
+    returnView = 'service';
+  }
+
   if (paymentId) {
     try {
       const p = await prisma.payment.findUnique({ where: { id: String(paymentId) } });
       const meta = safeJsonParse(p?.cardLast4, {});
+      // If meta has a specific returnView, it can override the path-based one
       if (meta?.returnView) returnView = meta.returnView;
+      // If it's a topup, ensure it's wallet
+      if (meta?.type === 'topup') returnView = 'wallet';
     } catch {}
   }
 
@@ -844,7 +871,7 @@ const paytabsReturn = asyncHandler(async (req, res) => {
     pt_payment_id: paymentId || '',
     pt_tran_ref: tranRef || '',
     pt_return_view: returnView || 'home',
-  });
+  }, returnView === 'wallet' ? 'topup' : 'service');
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.end(`<!doctype html>

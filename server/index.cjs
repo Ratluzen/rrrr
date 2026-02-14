@@ -57,6 +57,11 @@ app.use('/api/settings', require('./routes/settingsRoutes'));
 // New Features Routes
 app.use('/api/wallet', require('./routes/walletRoutes'));
 app.use('/api/payments', require('./routes/paymentRoutes'));
+
+// ✅ PayTabs Custom Return URLs (Redirect to the standard return handler)
+const { paytabsReturn } = require('./controllers/paymentController');
+app.all('/payment/return/wallet', paytabsReturn);
+app.all('/payment/return/service', paytabsReturn);
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
 
