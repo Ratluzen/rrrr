@@ -155,7 +155,8 @@ const getCallbackUrl = () => {
 };
 
 const getReturnUrl = (type) => {
-  const base = process.env.APP_BASE_URL || 'https://www.ratnzer.com';
+  // Force use the production domain for web redirects
+  const base = 'https://www.ratnzer.com';
   const cleanBase = base.replace(/\/$/, '');
   
   // Custom return URLs based on transaction type
@@ -169,7 +170,8 @@ const getReturnUrl = (type) => {
 };
 
 const getFrontendReturnUrl = (params, type, isApp = false) => {
-  const base = process.env.APP_BASE_URL || 'https://www.ratnzer.com';
+  // Force use the production domain for web redirects
+  const base = 'https://www.ratnzer.com';
   const cleanBase = base.replace(/\/$/, '');
   const qs = new URLSearchParams(params || {}).toString();
 
