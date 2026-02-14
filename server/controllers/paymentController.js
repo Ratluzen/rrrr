@@ -864,21 +864,23 @@ const paytabsReturn = asyncHandler(async (req, res) => {
   let returnView = 'home';
   let paymentId = cartId;
 
-  // Determine return view from path if possible
-  if (req.path.includes('/wallet')) {
+  // Determine return view from path or PayTabs custom fields (udf1)
+  if (req.path.includes('/wallet') || src.udf1 === 'wallet') {
     returnView = 'wallet';
-  } else if (req.path.includes('/service')) {
+  } else if (req.path.includes('/service') || src.udf1 === 'service') {
     returnView = 'service';
   }
 
   if (paymentId) {
     try {
       const p = await prisma.payment.findUnique({ where: { id: String(paymentId) } });
-      const meta = safeJsonParse(p?.cardLast4, {});
-      // If meta has a specific returnView, it can override the path-based one
-      if (meta?.returnView) returnView = meta.returnView;
-      // If it's a topup, ensure it's wallet
-      if (meta?.type === 'topup') returnView = 'wallet';
+      if (p) {
+        const meta = safeJsonParse(p.cardLast4, {});
+        // If meta has a specific returnView, it can override the path-based one
+        if (meta?.returnView) returnView = meta.returnView;
+        // If it's a topup, ensure it's wallet
+        if (meta?.type === 'topup') returnView = 'wallet';
+      }
     } catch {}
   }
 
@@ -923,15 +925,23 @@ const paytabsReturn = asyncHandler(async (req, res) => {
     <a href="${frontendUrl}">${buttonText}</a>
   </div>
   <script>
+    const targetUrl = ${JSON.stringify(frontendUrl)};
+    const isDeepLink = ${isDeepLink};
+
     // Attempt immediate redirect
-    window.location.replace(${JSON.stringify(frontendUrl)});
+    window.location.replace(targetUrl);
     
     // Fallback for deep links (if app not installed or browser blocks)
-    if (${isDeepLink}) {
+    if (isDeepLink) {
+      // Try again after a short delay in case the first attempt was blocked
       setTimeout(function() {
-        // If still on this page after 2.5s, maybe show a web fallback or just let them click
+        window.location.href = targetUrl;
+      }, 500);
+
+      setTimeout(function() {
+        // If still on this page after 3s, show a message or just let them click the button
         console.log("Deep link might have failed or app not installed");
-      }, 2500);
+      }, 3000);
     }
   </script>
 </body>
